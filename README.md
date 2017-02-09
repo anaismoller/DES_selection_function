@@ -7,9 +7,9 @@ Method: comparing DES Y3 spectroscopically confirmed SNe Ia  and simulated SNe I
 Codes to run:
 
 1. do_selection_function.py
-	input: - fitted light-curves data and simulation (SNANA format)
-	Beware: if you are producing the FITRES you need to format the FITRES to eliminate blank spaces and the line 			before VARNAMES must be eliminated.
-		- Chris and Mat's selection function (data driven) for comparison	
+	input: a) fitted light-curves data and simulation (SNANA format)
+	!!! Beware: if you are producing the FITRES you need to format the FITRES to eliminate blank spaces and the line 			before VARNAMES must be eliminated.
+		b) Chris and Mat's selection function (data driven) for comparison	
 	output: plots, csv with division of data/sim by magnitude
 
 2. do_emceee_fit_sigmoid.py
