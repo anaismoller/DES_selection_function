@@ -4,7 +4,6 @@ Determining the spectroscopic selection function through comparison of data and 
 Method: comparing DES Y3 spectroscopically confirmed SNe Ia  and simulated SNe Ia (simulation includes detection in pipeline, SNR)
 
 #Part 1: determining the selection function
-Codes to run:
 
 1. do_selection_function.py
 	input: a) fitted light-curves data and simulation (SNANA format)
@@ -20,3 +19,5 @@ Codes to run:
 	
 #Part 2: determining the bias
 After the previously determined selection function is applied to a new simulation, it is time to study the color, stretch, redshift distributions and the mB bias we need to correct.
+1. do_bias_and_distributions.py: create plots.
+	input: FITRES (see formatting above)
