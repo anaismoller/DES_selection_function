@@ -11,7 +11,7 @@ from mu_cosmo import dist_mu
 path_to_save = './plots/'
 if not os.path.exists(path_to_save):
     os.makedirs(path_to_save)
-debugging=False
+debugging=True
 
 #______LOAD DATA AND SIM, APPLY CUTS
 data_ori = pd.read_csv('../data_and_sim/DESALL_fitted_myself/FITOPT000.FITRES',
@@ -140,6 +140,15 @@ def plots_vs_z():
         if db=='sim':
             mean_dic[db]['delmu']=[]
             err_dic[db]['delmu']=[]
+        if db=='data' and debugging==True:
+            mean_dic['data_deep'] = {}
+            mean_dic['data_shallow'] = {}
+            err_dic['data_deep'] = {}
+            err_dic['data_shallow'] = {}
+            mean_dic['data_deep']['c'] = []
+            mean_dic['data_shallow']['c'] = []
+            err_dic['data_deep']['c'] = []
+            err_dic['data_shallow']['c'] = []
 
         for i, z_bin in enumerate(z_bins[:-1]):
             if db == 'sim':
@@ -150,6 +159,22 @@ def plots_vs_z():
             mean_x1 = np.mean(binned['x1'])
             mean_c = np.mean(binned['c'])
             mean_mb = np.mean(binned['mB'])
+            if db=='data' and debugging==True:
+                tmp_deep = binned.loc[binned['FIELD'].isin(['X3','C3'])]
+                tmp_shallow = binned.loc[binned['FIELD'].isin(['E1','E2','S1','S2','C1','C2','X1','X2'])]
+                if len(tmp_deep)>0:
+                    mean_c_deep=np.mean(tmp_deep['c'])
+                    err_c_deep = np.std(tmp_deep['c']) / np.sqrt(len(tmp_deep))
+                else:
+                    mean_c_deep=0
+                    err_c_deep=0
+                if len(tmp_shallow)>0:
+                    mean_c_shallow=np.mean(tmp_shallow['c'])
+                    err_c_shallow = np.std(tmp_shallow['c']) / np.sqrt(len(tmp_shallow))
+                else:
+                    mean_c_shallow=0
+                    err_c_shallow=0
+
             # gaussian err=sigma/sqrt(n) : sigma=std
             err_x1 = np.std(binned['x1']) / np.sqrt(len(binned))
             err_c = np.std(binned['c']) / np.sqrt(len(binned))
@@ -169,6 +194,11 @@ def plots_vs_z():
             err_dic[db]['mB'].append(err_mb)
             av_z=z_bin+(z_bins[i+1]-z_bin)/2.
             mean_dic[db]['distmu'].append(dist_mu(av_z))
+            if db=='data' and debugging==True:
+                mean_dic['data_deep']['c'].append(mean_c_deep)
+                mean_dic['data_shallow']['c'].append(mean_c_shallow)
+                err_dic['data_deep']['c'].append(err_c_deep)
+                err_dic['data_shallow']['c'].append(err_c_shallow)
 
     #plots def
     half_z_bin_step=z_bin_step/2.
@@ -270,22 +300,16 @@ def plots_vs_z():
     del fig
 
     if debugging==True:
-        #extra delmu (JLA-like) (para ver si es mi binning el problema)
+        #splitting data in shallow and deep
+        print len(z_bins_plot),len(mean_dic['data_shallow']['c']), len(err_dic['data_shallow']['c'])
         fig = plt.figure()
-        plt.scatter(sim['z'],sim['delmu'])
-        fig=plt.errorbar(z_bins_plot,np.array(mean_dic['sim']['delmu']),yerr=err_delmu,color='red',fmt='o')
+        fig=plt.errorbar(z_bins_plot,mean_dic['data_shallow']['c'],yerr=err_dic['data_shallow']['c'],fmt='o',color='orange',label='data shallow')
+        fig=plt.errorbar(z_bins_plot,mean_dic['data_deep']['c'],yerr=err_dic['data_deep']['c'],fmt='o',color='magenta',label='data deep')
+        fig=plt.errorbar(z_bins_plot,mean_dic['sim']['c'],yerr=err_dic['sim']['c'],fmt='o',color='blue',label='sim')
+        plt.legend()
         plt.xlabel('z')
-        plt.ylabel('delmu')
-        plt.savefig('%s/scatter_delmu.png'%path_to_save)
-        del fig
-        #zoom
-        fig = plt.figure()
-        plt.scatter(sim['z'],sim['delmu'])
-        fig=plt.scatter(z_bins_plot,np.array(mean_dic['sim']['delmu']),color='red')
-        plt.ylim(-0.05,0)
-        plt.xlabel('z')
-        plt.ylabel('delmu')
-        plt.savefig('%s/scatter_delmu_zoom.png'%path_to_save)
+        plt.ylabel('c')
+        plt.savefig('%s/evol_c_z_data_splitdeepshallow.png'%path_to_save)
         del fig
 
 def mag_histos(filt,norm_bin,min_mag,nbins):
