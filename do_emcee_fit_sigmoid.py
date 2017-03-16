@@ -169,7 +169,7 @@ if __name__ == '__main__':
     # initial guess
     def sigmoid_fit_func(x, a, alph, bet):
         return a / (1 + np.exp((+alph * x) + bet))
-    low_bounds = [0.5,1.,-100]
+    low_bounds = [0.5,1.,-120]
     high_bounds = [2, 6, -20]
 
     filter_list=['r','i']

@@ -6,7 +6,7 @@ import sys
 from scipy.optimize import curve_fit
 import os
 from mu_cosmo import dist_mu
-
+from scipy import stats  
 #______SETTINGS
 path_to_save = './plots/'
 if not os.path.exists(path_to_save):
@@ -14,15 +14,17 @@ if not os.path.exists(path_to_save):
 debugging=True
 
 #______LOAD DATA AND SIM, APPLY CUTS
-data_ori = pd.read_csv('../data_and_sim/DESALL_fitted_myself/FITOPT000.FITRES',
+data_ori = pd.read_csv('../data_and_sim/DESALL_fitted_myself_withcuts/FITOPT000.FITRES',
                        index_col=False, comment='#',delimiter=' ')
 tmp = data_ori[(data_ori['c'] > -0.3) & (data_ori['c'] < 0.3) & (data_ori['x1'] > -3) & (data_ori['x1']
                                                                                          < 3) & (data_ori['z'] > 0.05) & (data_ori['z'] < 0.9) & (data_ori['FITPROB'] > 1E-05)]
-data = tmp[tmp.columns.values[:-1]]
+tmp2 = tmp[tmp.columns.values[:-1]]
+#only Ias!!!!
+data=tmp2[tmp2['TYPE']==1]
 
 print 'SNe in the sample', len(data)
 
-sim = pd.read_csv('../data_and_sim/20170202_YEFF_SE03/FITOPT000.FITRES',
+sim = pd.read_csv('../data_and_sim/20170309_YEFF_SE03/FITOPT000.FITRES',
                   index_col=False, comment='#', delimiter=' ')
 tmp2 = sim[(sim['c'] > -0.3) & (sim['c'] < 0.3) & (sim['x1'] > -3) & (sim['x1'] < 3)
            & (sim['z'] > 0.05) & (sim['z'] < 0.9) & (sim['FITPROB'] > 1E-05)]
@@ -38,6 +40,12 @@ sel_function_data["r"] = pd.read_csv('../MATS_SPEC_EFF/r_eff.csv', delimiter=' '
 sel_function_data_new = {}
 sel_function_data_new["i"] = pd.read_csv('../2017_MAT/SEARCHEFF_SPEC_DES_i.DAT', delimiter=' ')
 sel_function_data_new["r"] = pd.read_csv('../2017_MAT/SEARCHEFF_SPEC_DES_r.DAT', delimiter=' ')
+
+#______LOAD NEW Mat's & Chris's c, x1 vs z distributions
+MC_vs_z={}
+MC_vs_z['c']=pd.read_csv('../2017_MATS_cx1_z/sim_c_v_z_28022017.txt', delimiter=' ')
+MC_vs_z['x1']=pd.read_csv('../2017_MATS_cx1_z/sim_x1_v_z_28022017.txt', delimiter=' ')
+
 
 def finding_norm_bin_histos(var):
     '''
@@ -149,6 +157,10 @@ def plots_vs_z():
             mean_dic['data_shallow']['c'] = []
             err_dic['data_deep']['c'] = []
             err_dic['data_shallow']['c'] = []
+            mean_dic['data_deep']['x1'] = []
+            mean_dic['data_shallow']['x1'] = []
+            err_dic['data_deep']['x1'] = []
+            err_dic['data_shallow']['x1'] = []
 
         for i, z_bin in enumerate(z_bins[:-1]):
             if db == 'sim':
@@ -162,18 +174,32 @@ def plots_vs_z():
             if db=='data' and debugging==True:
                 tmp_deep = binned.loc[binned['FIELD'].isin(['X3','C3'])]
                 tmp_shallow = binned.loc[binned['FIELD'].isin(['E1','E2','S1','S2','C1','C2','X1','X2'])]
+                #ANOVA test
+                print '>>zbin',i
+                f_val, p_val = stats.f_oneway(tmp_deep['c'], tmp_shallow['c'])  
+                print "c One-way ANOVA P =", p_val 
+                f_val, p_val = stats.f_oneway(tmp_deep['x1'], tmp_shallow['x1'])  
+                print "x1 One-way ANOVA P =", p_val 
                 if len(tmp_deep)>0:
                     mean_c_deep=np.mean(tmp_deep['c'])
                     err_c_deep = np.std(tmp_deep['c']) / np.sqrt(len(tmp_deep))
+                    mean_x1_deep=np.mean(tmp_deep['x1'])
+                    err_x1_deep = np.std(tmp_deep['x1']) / np.sqrt(len(tmp_deep))
                 else:
-                    mean_c_deep=0
+                    mean_c_deep=-10
                     err_c_deep=0
+                    mean_x1_deep=-10
+                    err_x1_deep=0
                 if len(tmp_shallow)>0:
                     mean_c_shallow=np.mean(tmp_shallow['c'])
                     err_c_shallow = np.std(tmp_shallow['c']) / np.sqrt(len(tmp_shallow))
+                    mean_x1_shallow=np.mean(tmp_shallow['x1'])
+                    err_x1_shallow = np.std(tmp_shallow['x1']) / np.sqrt(len(tmp_shallow))
                 else:
-                    mean_c_shallow=0
+                    mean_c_shallow=-10
                     err_c_shallow=0
+                    mean_x1_shallow=-10
+                    err_x1_shallow=0
 
             # gaussian err=sigma/sqrt(n) : sigma=std
             err_x1 = np.std(binned['x1']) / np.sqrt(len(binned))
@@ -199,6 +225,10 @@ def plots_vs_z():
                 mean_dic['data_shallow']['c'].append(mean_c_shallow)
                 err_dic['data_deep']['c'].append(err_c_deep)
                 err_dic['data_shallow']['c'].append(err_c_shallow)
+                mean_dic['data_deep']['x1'].append(mean_x1_deep)
+                mean_dic['data_shallow']['x1'].append(mean_x1_shallow)
+                err_dic['data_deep']['x1'].append(err_x1_deep)
+                err_dic['data_shallow']['x1'].append(err_x1_shallow)
 
     #plots def
     half_z_bin_step=z_bin_step/2.
@@ -238,7 +268,7 @@ def plots_vs_z():
     fig=plt.errorbar(z_bins_plot,alpha_x1['sim'],yerr=alpha*np.array(err_dic['sim']['x1']),fmt='o',color=color_dic['sim'],label='sim')
     alpha_x1['data']= alpha * np.array(mean_dic['data']['x1'])
     fig=plt.errorbar(z_bins_plot,alpha_x1['data'],yerr=alpha*np.array(err_dic['data']['x1']),fmt='o',color=color_dic['data'],label='data')
-    chi= np.sum(np.divide(np.power(np.array(alpha_x1['sim'])-np.array(alpha_x1['data']),2),alpha_x1['data']))
+    chi= np.abs(np.sum(np.divide(np.power(np.array(alpha_x1['sim'])-np.array(alpha_x1['data']),2),alpha_x1['data'])))
     plt.title('chi square %f'%float(chi))
     plt.ylabel('%s x1'%alpha)
     plt.xlim(0,max_z+half_z_bin_step)
@@ -254,7 +284,7 @@ def plots_vs_z():
     fig=plt.errorbar(z_bins_plot,beta_c['data'],yerr=beta*np.array(err_dic['data']['c']),fmt='o',color=color_dic['data'],label='data')
     beta_c['sim']= beta * np.array(mean_dic['sim']['c'])
     fig=plt.errorbar(z_bins_plot,beta_c['sim'],yerr=beta*np.array(err_dic['sim']['c']),fmt='o',color=color_dic['sim'],label='sim')
-    chi= np.sum(np.divide(np.power(np.array(beta_c['sim'])-np.array(beta_c['data']),2),beta_c['data']))
+    chi= np.abs(np.sum(np.divide(np.power(np.array(beta_c['sim'])-np.array(beta_c['data']),2),beta_c['data'])))
     plt.title('chi square %f'%float(chi))
     plt.ylabel(' %s c'%beta)
     plt.xlim(0,max_z+half_z_bin_step)
@@ -277,7 +307,8 @@ def plots_vs_z():
     fig = plt.figure()
     fig=plt.errorbar(z_bins_plot,mean_dic['data']['x1'],yerr=err_dic['data']['x1'],fmt='o',color='red',label='data')
     fig=plt.errorbar(z_bins_plot,mean_dic['sim']['x1'],yerr=err_dic['sim']['x1'],fmt='o',color='blue',label='sim')
-    chi= np.sum(np.divide(np.power(np.array(mean_dic['sim']['x1'])-np.array(mean_dic['data']['x1']),2),mean_dic['data']['x1']))
+    chi= np.abs(np.sum(np.divide(np.power(np.array(mean_dic['sim']['x1'])-np.array(mean_dic['data']['x1']),2),mean_dic['data']['x1'])))
+    fig=plt.scatter(MC_vs_z['x1']['z'],MC_vs_z['x1']['x1'],label='MC sim',color='grey')
     plt.title('chi square %f'%float(chi))
     plt.xlim(0,max_z+half_z_bin_step)
     plt.ylabel('x1')
@@ -290,7 +321,8 @@ def plots_vs_z():
     fig = plt.figure()
     fig=plt.errorbar(z_bins_plot,mean_dic['data']['c'],yerr=err_dic['data']['c'],fmt='o',color='red',label='data')
     fig=plt.errorbar(z_bins_plot,mean_dic['sim']['c'],yerr=err_dic['sim']['c'],fmt='o',color='blue',label='sim')
-    chi= np.sum(np.divide(np.power(np.array(mean_dic['sim']['c'])-np.array(mean_dic['data']['c']),2),mean_dic['data']['c']))
+    chi= np.abs(np.sum(np.divide(np.power(np.array(mean_dic['sim']['c'])-np.array(mean_dic['data']['c']),2),mean_dic['data']['c'])))
+    fig=plt.scatter(MC_vs_z['c']['z'],MC_vs_z['c']['c'],label='MC sim',color='grey')
     plt.title('chi square %f'%float(chi))
     plt.xlim(0,max_z+half_z_bin_step)
     plt.ylabel('c')
@@ -301,15 +333,28 @@ def plots_vs_z():
 
     if debugging==True:
         #splitting data in shallow and deep
-        print len(z_bins_plot),len(mean_dic['data_shallow']['c']), len(err_dic['data_shallow']['c'])
         fig = plt.figure()
         fig=plt.errorbar(z_bins_plot,mean_dic['data_shallow']['c'],yerr=err_dic['data_shallow']['c'],fmt='o',color='orange',label='data shallow')
         fig=plt.errorbar(z_bins_plot,mean_dic['data_deep']['c'],yerr=err_dic['data_deep']['c'],fmt='o',color='magenta',label='data deep')
         fig=plt.errorbar(z_bins_plot,mean_dic['sim']['c'],yerr=err_dic['sim']['c'],fmt='o',color='blue',label='sim')
+        fig=plt.scatter(MC_vs_z['c']['z'],MC_vs_z['c']['c'],label='MC sim',color='grey')
         plt.legend()
         plt.xlabel('z')
         plt.ylabel('c')
+        plt.ylim(-0.15,.15)
         plt.savefig('%s/evol_c_z_data_splitdeepshallow.png'%path_to_save)
+        del fig
+
+        fig = plt.figure()
+        fig=plt.errorbar(z_bins_plot,mean_dic['data_shallow']['x1'],yerr=err_dic['data_shallow']['x1'],fmt='o',color='orange',label='data shallow')
+        fig=plt.errorbar(z_bins_plot,mean_dic['data_deep']['x1'],yerr=err_dic['data_deep']['x1'],fmt='o',color='magenta',label='data deep')
+        fig=plt.errorbar(z_bins_plot,mean_dic['sim']['x1'],yerr=err_dic['sim']['x1'],fmt='o',color='blue',label='sim')
+        fig=plt.scatter(MC_vs_z['x1']['z'],MC_vs_z['x1']['x1'],label='MC sim',color='grey')
+        plt.legend()
+        plt.xlabel('z')
+        plt.ylabel('x1')
+        plt.ylim(-1.5,2)
+        plt.savefig('%s/evol_x1_z_data_splitdeepshallow.png'%path_to_save)
         del fig
 
 def mag_histos(filt,norm_bin,min_mag,nbins):
@@ -380,6 +425,8 @@ if __name__ == "__main__":
     var_list=['z','c','x1']
     for var in var_list:
         norm_bin,chi= finding_norm_bin_histos(var)
+        if var=='c':
+            norm_bin=3
         norm = histograms(var,norm_bin,chi)
     plots_vs_z()
 

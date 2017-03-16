@@ -19,9 +19,11 @@ data_ori = pd.read_csv('../data_and_sim/DESALL_fitted_myself/FITOPT000.FITRES',
                        index_col=False, comment='#',delimiter=' ')
 tmp = data_ori[(data_ori['c'] > -0.3) & (data_ori['c'] < 0.3) & (data_ori['x1'] > -3) & (data_ori['x1']
                                                                                          < 3) & (data_ori['z'] > 0.05) & (data_ori['z'] < 0.9) & (data_ori['FITPROB'] > 1E-05)]
-data = tmp[tmp.columns.values[:-1]]
+tmp2 = tmp[tmp.columns.values[:-1]]
+#Selecting type Ias!
+data=tmp2[tmp2['TYPE']==1]
 
-sim = pd.read_csv('../data_and_sim/NEFF_YPIPELINE_SEO1/FITOPT000.FITRES',
+sim = pd.read_csv('../data_and_sim/NEFF_YPIPELINE_SEO1_colour_changed/FITOPT000.FITRES',
                   index_col=False, comment='#', delimiter=' ')
 tmp2 = sim[(sim['c'] > -0.3) & (sim['c'] < 0.3) & (sim['x1'] > -3) & (sim['x1'] < 3)
            & (sim['z'] > 0.05) & (sim['z'] < 0.9) & (sim['FITPROB'] > 1E-05)]
