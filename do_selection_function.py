@@ -15,7 +15,7 @@ if not os.path.exists(path_to_save):
 debugging=False
 
 #______LOAD DATA AND SIM, AND APPLY CUTS
-data_ori = pd.read_csv('../data_and_sim/DESALL_fitted_myself/FITOPT000.FITRES',
+data_ori = pd.read_csv('../../../data_and_sim/DESALL_fitted_myself/FITOPT000.FITRES',
                        index_col=False, comment='#',delimiter=' ')
 tmp = data_ori[(data_ori['c'] > -0.3) & (data_ori['c'] < 0.3) & (data_ori['x1'] > -3) & (data_ori['x1']
                                                                                          < 3) & (data_ori['z'] > 0.05) & (data_ori['z'] < 0.9) & (data_ori['FITPROB'] > 1E-05)]
@@ -23,7 +23,7 @@ tmp2 = tmp[tmp.columns.values[:-1]]
 #Selecting type Ias!
 data=tmp2[tmp2['TYPE']==1]
 
-sim = pd.read_csv('../data_and_sim/NEFF_YPIPELINE_SEO1_colour_changed/FITOPT000.FITRES',
+sim = pd.read_csv('../sim/NEFF/FITOPT000.FITRES',
                   index_col=False, comment='#', delimiter=' ')
 tmp2 = sim[(sim['c'] > -0.3) & (sim['c'] < 0.3) & (sim['x1'] > -3) & (sim['x1'] < 3)
            & (sim['z'] > 0.05) & (sim['z'] < 0.9) & (sim['FITPROB'] > 1E-05)]
@@ -31,14 +31,14 @@ sim = tmp2
 
 #______LOAD OLD Mat's & Chris's selection function from data (classified and non-class)
 sel_function_data = {}
-sel_function_data["i"] = pd.read_csv('../MATS_SPEC_EFF/i_eff.csv', delimiter=' ')
-sel_function_data["r"] = pd.read_csv('../MATS_SPEC_EFF/r_eff.csv', delimiter=' ')
+sel_function_data["i"] = pd.read_csv('../../../MATS_SPEC_EFF/i_eff.csv', delimiter=' ')
+sel_function_data["r"] = pd.read_csv('../../../MATS_SPEC_EFF/r_eff.csv', delimiter=' ')
 
 
 #______LOAD NEW Mat's & Chris's selection function from data (classified and non-class)
 sel_function_data_new = {}
-sel_function_data_new["i"] = pd.read_csv('../2017_MAT/SEARCHEFF_SPEC_DES_i.DAT', delimiter=' ')
-sel_function_data_new["r"] = pd.read_csv('../2017_MAT/SEARCHEFF_SPEC_DES_r.DAT', delimiter=' ')
+sel_function_data_new["i"] = pd.read_csv('../../../2017_MAT/SEARCHEFF_SPEC_DES_i.DAT', delimiter=' ')
+sel_function_data_new["r"] = pd.read_csv('../../../2017_MAT/SEARCHEFF_SPEC_DES_r.DAT', delimiter=' ')
 
 def initial_plots(norm_bin):
     '''

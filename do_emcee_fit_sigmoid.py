@@ -164,13 +164,16 @@ def fit_MCMC(d_param):
 if __name__ == '__main__':
 
     # minimum magnitude threshold for the fit
-    min_mag_dic={'i':20,'r':19}
+    min_mag_dic={'i':20.7,'r':19}
 
     # initial guess
     def sigmoid_fit_func(x, a, alph, bet):
         return a / (1 + np.exp((+alph * x) + bet))
-    low_bounds = [0.5,1.,-120]
-    high_bounds = [2, 6, -20]
+    low_bounds = [0.5,1.,-140]
+    high_bounds = [2, 8, -20]
+
+    low_bounds_i = [0.5,2,-80]
+    high_bounds_i = [2, 3.4, -43]
 
     filter_list=['r','i']
     str_to_save=[]
@@ -180,8 +183,8 @@ if __name__ == '__main__':
         input_name = 'division_m0obs_' + filt + '.csv'
         data = pd.read_csv(input_name)
         print 'reading',input_name
-        MC_sel_function_data = pd.read_csv('../MATS_SPEC_EFF/' + filt + '_eff.csv', delimiter=' ')
-        MC_sel_function_data_new = pd.read_csv('../2017_MAT/SEARCHEFF_SPEC_DES_%s.DAT'%filt, delimiter=' ')
+        MC_sel_function_data = pd.read_csv('../../../MATS_SPEC_EFF/' + filt + '_eff.csv', delimiter=' ')
+        MC_sel_function_data_new = pd.read_csv('../../../2017_MAT/SEARCHEFF_SPEC_DES_%s.DAT'%filt, delimiter=' ')
 
         xdata_tmp = np.array(data[data['x'] > lim_mag]['x'])
         ydata_tmp = np.array(data[data['x'] > lim_mag]['div'])
@@ -217,9 +220,14 @@ if __name__ == '__main__':
 
         list_key = ['A','alpha','beta']
         d_param = {}
-        d_param['A'] = (low_bounds[0],high_bounds[0])
-        d_param['alpha'] = (low_bounds[1],high_bounds[1])
-        d_param['beta'] = (low_bounds[2],high_bounds[2])
+        if filt=='r':
+            d_param['A'] = (low_bounds[0],high_bounds[0])
+            d_param['alpha'] = (low_bounds[1],high_bounds[1])
+            d_param['beta'] = (low_bounds[2],high_bounds[2])
+        if filt=='i':
+            d_param['A'] = (low_bounds_i[0],high_bounds_i[0])
+            d_param['alpha'] = (low_bounds_i[1],high_bounds_i[1])
+            d_param['beta'] = (low_bounds_i[2],high_bounds_i[2])
     
         str_to_save.append(fit_MCMC(d_param))
 

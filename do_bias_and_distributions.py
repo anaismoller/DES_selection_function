@@ -14,7 +14,7 @@ if not os.path.exists(path_to_save):
 debugging=True
 
 #______LOAD DATA AND SIM, APPLY CUTS
-data_ori = pd.read_csv('../data_and_sim/DESALL_fitted_myself_withcuts/FITOPT000.FITRES',
+data_ori = pd.read_csv('../../../data_and_sim/DESALL_fitted_myself/FITOPT000.FITRES',
                        index_col=False, comment='#',delimiter=' ')
 tmp = data_ori[(data_ori['c'] > -0.3) & (data_ori['c'] < 0.3) & (data_ori['x1'] > -3) & (data_ori['x1']
                                                                                          < 3) & (data_ori['z'] > 0.05) & (data_ori['z'] < 0.9) & (data_ori['FITPROB'] > 1E-05)]
@@ -24,7 +24,7 @@ data=tmp2[tmp2['TYPE']==1]
 
 print 'SNe in the sample', len(data)
 
-sim = pd.read_csv('../data_and_sim/20170309_YEFF_SE03/FITOPT000.FITRES',
+sim = pd.read_csv('../sim/YEFF/FITOPT000.FITRES',
                   index_col=False, comment='#', delimiter=' ')
 tmp2 = sim[(sim['c'] > -0.3) & (sim['c'] < 0.3) & (sim['x1'] > -3) & (sim['x1'] < 3)
            & (sim['z'] > 0.05) & (sim['z'] < 0.9) & (sim['FITPROB'] > 1E-05)]
@@ -32,19 +32,19 @@ sim = tmp2
 
 #______LOAD OLD Mat's & Chris's selection function from data (classified and non-class)
 sel_function_data = {}
-sel_function_data["i"] = pd.read_csv('../MATS_SPEC_EFF/i_eff.csv', delimiter=' ')
-sel_function_data["r"] = pd.read_csv('../MATS_SPEC_EFF/r_eff.csv', delimiter=' ')
+sel_function_data["i"] = pd.read_csv('../../../MATS_SPEC_EFF/i_eff.csv', delimiter=' ')
+sel_function_data["r"] = pd.read_csv('../../../MATS_SPEC_EFF/r_eff.csv', delimiter=' ')
 
 
 #______LOAD NEW Mat's & Chris's selection function from data (classified and non-class)
 sel_function_data_new = {}
-sel_function_data_new["i"] = pd.read_csv('../2017_MAT/SEARCHEFF_SPEC_DES_i.DAT', delimiter=' ')
-sel_function_data_new["r"] = pd.read_csv('../2017_MAT/SEARCHEFF_SPEC_DES_r.DAT', delimiter=' ')
+sel_function_data_new["i"] = pd.read_csv('../../../2017_MAT/SEARCHEFF_SPEC_DES_i.DAT', delimiter=' ')
+sel_function_data_new["r"] = pd.read_csv('../../../2017_MAT/SEARCHEFF_SPEC_DES_r.DAT', delimiter=' ')
 
 #______LOAD NEW Mat's & Chris's c, x1 vs z distributions
 MC_vs_z={}
-MC_vs_z['c']=pd.read_csv('../2017_MATS_cx1_z/sim_c_v_z_28022017.txt', delimiter=' ')
-MC_vs_z['x1']=pd.read_csv('../2017_MATS_cx1_z/sim_x1_v_z_28022017.txt', delimiter=' ')
+MC_vs_z['c']=pd.read_csv('../../../2017_MATS_cx1_z/sim_c_v_z_28022017.txt', delimiter=' ')
+MC_vs_z['x1']=pd.read_csv('../../../2017_MATS_cx1_z/sim_x1_v_z_28022017.txt', delimiter=' ')
 
 
 def finding_norm_bin_histos(var):
@@ -260,6 +260,14 @@ def plots_vs_z():
     plt.title('mB+19.38+alpha*x1-beta*c-dist_mu(z)')
     plt.savefig('./plots/bias.png')
     del fig
+    #save bias correction in txt file
+    bias_dic = {}
+    bias_dic['z'] = mean_z_arr
+    bias_dic['mu'] = mean_mu_arr
+    bias_dic['err'] = np.array(err_mu_arr)
+    bias_df = pd.DataFrame(bias_dic,columns=['z','mu','err'])
+    name = 'bias.csv'
+    bias_df.to_csv(name,index=False)
 
     #alpha x1
     alpha_x1={}

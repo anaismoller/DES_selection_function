@@ -5,7 +5,7 @@ SIMLIB_FIELDLIST:  X3+C3+E1+E2+S1+S2+C1+C2+X1+X2 #all DES fields, should include
 NGEN_SEASON: 3.0    # 3 seasons
 
 # ----------------- sim setup  ---------------
-GENVERSION:  AMDES_NEFF_YPIPELINE_SEO1    # SNDATA version to generate
+GENVERSION:  AMDES_YEFF_YPIPELINE_SEO3    # SNDATA version to generate
 NGEN_LC:    20000           	# number of SN lightcurves to generate 
 GENSOURCE:  RANDOM   
 GENMODEL:   SALT2.JLA-B14
@@ -45,9 +45,9 @@ GENMEAN_SALT2x1:     0.945
 GENRANGE_SALT2x1:   -5.0  +3.0     # x1 (stretch) range
 GENSIGMA_SALT2x1:    1.553   0.257     # bifurcated sigmas
 
-GENMEAN_SALT2c:     -0.054
+GENMEAN_SALT2c:     -0.043
 GENRANGE_SALT2c:   -0.40   0.60     # color range
-GENSIGMA_SALT2c:    0.043   0.101     # bifurcated sigmas
+GENSIGMA_SALT2c:    0.052   0.107     # bifurcated sigmas
 
 GENALPHA_SALT2:  0.144 	# Was 0.11
 GENBETA_SALT2:   3.1 	# Was 3.2
@@ -63,8 +63,9 @@ SMEARFLAG_ZEROPT:  1  # smear zero-point with zptsig
 
 FORMAT_MASK:  32  # terse format
 # --------------------
-APPLY_SEARCHEFF_OPT: 1 # 3 all efficiencies, 1 detected not spec confirmed, 0 all SNe (no cuts)
+APPLY_SEARCHEFF_OPT: 3 # 3 all efficiencies, 1 detected not spec confirmed, 0 all SNe (no cuts)
 SEARCHEFF_PIPELINE_EFF_FILE: $SNDATA_ROOT/models/searcheff/SEARCHEFF_PIPELINE_DES.DAT #SNR
+SEARCHEFF_SPEC_FILE: /project/rkessler/amoller/MB/YEFF_YPIPELINE_SEO3/SPEC_EFF_NEFF_SEO1.DAT
 
 APPLY_CUTWIN_OPT: 3
 CUTWIN_LAMREST:  3200 9500      # cut on lamobs/(1+z)
