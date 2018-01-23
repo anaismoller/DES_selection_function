@@ -32,3 +32,11 @@ A. Moller 2017/12/27
    	 Path to save plots
     	default= ./plots
 
+	—onlybias
+	will only plot, no selection function computed
+
+How to get the bias? computing for AMG10, AMc11, CdAndrea v 2.3
+0. run simulations and fits
+	modified S. Hinton code
+		RUN_SIM_SPECEFF_BIAS_DES.sh
+		
