@@ -11,6 +11,7 @@ still a mess, can be improved!
 
 color_dic = {'data': 'red', 'sim': 'blue'}
 
+
 def distribution_plots(norm_bin, data, sim, path_plots):
     '''
     some preliminary plots, c, x1, z distributions
@@ -66,18 +67,25 @@ def distribution_plots(norm_bin, data, sim, path_plots):
         del fig
     return norm
 
+
 def plot_2d(mean_dic, err_dic, var1, var2, zbin_dic, path_plots):
     fig = plt.figure()
-    for db in ['data', 'sim']:
-        fig=plt.errorbar(zbin_dic['z_bins_plot'],mean_dic[db][var1],yerr=err_dic[db][var1],fmt='o',color=color_dic[db],label=db)
-    plt.xlim(0, zbin_dic['max_z']+zbin_dic['half_z_bin_step'])
+    if var1 =='mu':
+        fig = plt.errorbar(zbin_dic['z_bins_plot'],mean_dic['sim'][var1],
+                           yerr=err_dic['sim'][var1],fmt='o',color=color_dic['sim'],label='sim')
+    else:
+        for db in ['data', 'sim']:
+            fig = plt.errorbar(zbin_dic['z_bins_plot'],mean_dic[db][var1],
+                               yerr=err_dic[db][var1],fmt='o',color=color_dic[db],label=db)
+    plt.xlim(0, zbin_dic['max_z'] + zbin_dic['half_z_bin_step'])
     plt.ylabel(var1)
     plt.xlabel(var2)
     plt.legend()
-    plt.savefig('%s/evol_%s_%s.png'%(path_plots,var1,var2))
+    plt.savefig('%s/evol_%s_%s.png' % (path_plots,var1,var2))
     del fig
 
-def plots_vs_z(data, sim, path_plots):
+
+def plots_vs_z(data, sim, path_plots,onlybias):
     # Binning data by z, c and x1 distributions
 
     # zbin information
@@ -85,9 +93,9 @@ def plots_vs_z(data, sim, path_plots):
     min_z = data['zHD'].min()
     max_z = data['zHD'].max()
     z_bins = np.arange(min_z, max_z, z_bin_step)
-    half_z_bin_step = z_bin_step/2.
-    z_bins_plot = np.arange(min_z+half_z_bin_step,
-                            max_z-half_z_bin_step, z_bin_step)
+    half_z_bin_step = z_bin_step / 2.
+    z_bins_plot = np.arange(min_z + half_z_bin_step,
+                            max_z - half_z_bin_step, z_bin_step)
 
     zbin_dic = {}
     zbin_dic['step'] = 0.05
@@ -98,10 +106,14 @@ def plots_vs_z(data, sim, path_plots):
     zbin_dic['half_z_bin_step'] = half_z_bin_step
 
     # Physical values to use
-    Mb = 19.05
-    Mb_arr = np.ones(len(z_bins)-1)*(Mb)
+    Mb = 19.365
     alpha = 0.144  # from sim
     beta = 3.1
+
+    # Need to define mu before binning
+    sim['mu'] = np.array(sim['mB']) + Mb + np.array(alpha * sim['x1']) - \
+        np.array(beta * sim['c']) - sim['SIM_DLMAG']
+    data['mu'] = np.zeros(len(data['mB']))
 
     # Bin data
     mean_dic = {}
@@ -114,11 +126,13 @@ def plots_vs_z(data, sim, path_plots):
         mean_dic[db]['mB'] = []
         mean_dic[db]['alphax1'] = []
         mean_dic[db]['betac'] = []
+        mean_dic[db]['mu'] = []
         err_dic[db]['x1'] = []
         err_dic[db]['c'] = []
         err_dic[db]['mB'] = []
         err_dic[db]['alphax1'] = []
         err_dic[db]['betac'] = []
+        err_dic[db]['mu'] = []
 
         for i, z_bin in enumerate(z_bins[:-1]):
             if db == 'sim':
@@ -131,10 +145,13 @@ def plots_vs_z(data, sim, path_plots):
             mean_x1 = np.mean(binned['x1'])
             mean_c = np.mean(binned['c'])
             mean_mb = np.mean(binned['mB'])
+            mean_mu = np.mean(binned['mu'])
             # gaussian err=sigma/sqrt(n) : sigma=std
             err_x1 = np.std(binned['x1']) / np.sqrt(len(binned))
             err_c = np.std(binned['c']) / np.sqrt(len(binned))
             err_mb = np.std(binned['mBERR']) / np.sqrt(len(binned))
+            err_mu = np.sqrt(np.power(err_mb,2) + np.power(alpha,2) * np.power(
+                err_x1,2) + np.power(beta,2) * np.power(err_c,2))
 
             mean_dic[db]['x1'].append(mean_x1)
             mean_dic[db]['c'].append(mean_c)
@@ -142,17 +159,31 @@ def plots_vs_z(data, sim, path_plots):
             err_dic[db]['x1'].append(err_x1)
             err_dic[db]['c'].append(err_c)
             err_dic[db]['mB'].append(err_mb)
-            av_z = z_bin+(z_bins[i+1]-z_bin)/2.
-            mean_dic[db]['alphax1'].append(alpha*mean_x1)
-            mean_dic[db]['betac'].append(beta*mean_c)
-            err_dic[db]['alphax1'].append(alpha*err_x1)
-            err_dic[db]['betac'].append(beta*err_c)
+            mean_dic[db]['alphax1'].append(alpha * mean_x1)
+            mean_dic[db]['betac'].append(beta * mean_c)
+            err_dic[db]['alphax1'].append(alpha * err_x1)
+            err_dic[db]['betac'].append(beta * err_c)
+            mean_dic[db]['mu'].append(mean_mu)
+            err_dic[db]['mu'].append(err_mu)
 
     # Plot
     plot_2d(mean_dic, err_dic, 'alphax1', 'zHD', zbin_dic, path_plots)
     plot_2d(mean_dic, err_dic, 'betac', 'zHD', zbin_dic, path_plots)
     plot_2d(mean_dic, err_dic, 'c','zHD', zbin_dic, path_plots)
     plot_2d(mean_dic, err_dic, 'x1','zHD', zbin_dic, path_plots)
+    plot_2d(mean_dic, err_dic, 'mu','zHD', zbin_dic, path_plots)
+
+    if onlybias:
+        #save bias correction in txt file
+        import pandas as pd
+        bias_dic = {}
+        bias_dic['z'] = zbin_dic['z_bins_plot']
+        bias_dic['mu'] = mean_dic['sim']['mu']
+        bias_dic['err'] = err_dic['sim']['mu']
+        bias_df = pd.DataFrame(bias_dic,columns=['z','mu','err'])
+        name = '%s/bias.csv'%path_plots
+        bias_df.to_csv(name,index=False,float_format='%2.4f')
+
 
 
 def mag_histos(filt, data,sim, norm_bin, min_mag, nbins,plots,path_plots):
