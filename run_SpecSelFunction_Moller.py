@@ -47,6 +47,7 @@ def data_sim_division(filt, min_mag, norm_bin, nbins,plots, path_plots):
 
     return df
 
+
 if __name__ == "__main__":
 
     scratch_path = os.environ["SCRATCH_FITDIR"]
@@ -69,6 +70,8 @@ if __name__ == "__main__":
                         help="Data / Simulation plots")
     parser.add_argument(
         '--path_plots', default='./plots/', help='Path to save plots')
+    parser.add_argument('--onlybias', action="store_true", default=False,
+                        help="Computing bias, no selection function computation")
 
     args = parser.parse_args()
 
@@ -82,7 +85,7 @@ if __name__ == "__main__":
         if required copy,uncompress,read,clean
     '''
     print('>> Reading data/sim and copying/unzipping if needed')
-    print('   data: %s'%fdata)
+    print('   data: %s' % fdata)
     if '.gz' in fdata:
         print('   Copy & unzip %s' % (fdata))
         newfdata = copy_uncompress(fdata)
@@ -92,7 +95,7 @@ if __name__ == "__main__":
     else:
         data = load_fitres(fdata)
 
-    print('   sim: %s'%fsim)
+    print('   sim: %s' % fsim)
     if '.gz' in fsim:
         print('   Copy & unzip %s' % (fsim))
         newfsim = copy_uncompress(fsim)
@@ -106,26 +109,27 @@ if __name__ == "__main__":
         (optional)
         variable distribution plots for data control
     '''
-    if args.plots:
-        print('>> Plotting data, simulation distributions %s'%path_plots)
+    if args.plots or args.onlybias:
+        print('>> Plotting data, simulation distributions %s' % path_plots)
         if not os.path.exists(path_plots):
             os.makedirs(path_plots)
         # c,x1,z distributions
         norm = mplot.distribution_plots(norm_bin, data, sim, path_plots)
         # c,x1 as a function of z
-        mplot.plots_vs_z(data, sim, path_plots)
+        mplot.plots_vs_z(data, sim, path_plots,args.onlybias)
 
-    '''Selection Function
-    compute selection function by dividing data/sim by magnitude bin
-    '''
-    print('>> Computing selection function')
-    print('   Method: Data vs. Simulations (A. Moller)')
-    # Init
-    nbins = 20
-    filt = 'i'
-    min_mag = 20  # where are we complete? here you need a human choice, or do we?
-    # Data vs Sim
-    datsim = data_sim_division(
-        filt, min_mag, norm_bin, nbins, args.plots, path_plots)
-    # Emcee fit of dat/sim
-    mc.emcee_fitting(datsim, args.plots, path_plots, nameout)
+    if not args.onlybias:
+        '''Selection Function
+        compute selection function by dividing data/sim by magnitude bin
+        '''
+        print('>> Computing selection function')
+        print('   Method: Data vs. Simulations (A. Moller)')
+        # Init
+        nbins = 20
+        filt = 'i'
+        min_mag = 20  # where are we complete? here you need a human choice, or do we?
+        # Data vs Sim
+        datsim = data_sim_division(
+            filt, min_mag, norm_bin, nbins, args.plots, path_plots)
+        # Emcee fit of dat/sim
+        mc.emcee_fitting(datsim, args.plots, path_plots, nameout)
