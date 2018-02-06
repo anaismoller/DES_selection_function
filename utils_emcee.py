@@ -133,7 +133,7 @@ def fit_MCMC(d_param, xdata, ydata, err, plots,path_plots):
 
     if plots:
         plt.clf()
-        xx = np.linspace(xdata.min(), 26, 200)
+        xx = np.linspace(xdata.min(), 24, 200)
         plt.plot(xx, y_model(xx, theta_mcmc), color='orange',
                  label='Emcee sigmoid fit')  # mcmc fit
         plt.errorbar(xdata, ydata, yerr=err, fmt='o', color='blue',
@@ -207,7 +207,7 @@ def emcee_fitting(datsim, plots, path_plots, nameout):
     err_tmp = np.array(data[data['x'] > lim_mag]['err'])
 
     # filling max efficiency for lower magnitudes
-    mag_arr = np.arange(18, lim_mag, 0.2)
+    mag_arr = np.arange(20, lim_mag, 0.2)
     eff_arr = np.ones(len(mag_arr))
     err_arr = np.divide(np.ones(len(mag_arr)), 100)
     xdata = np.concatenate((xdata_tmp, mag_arr))

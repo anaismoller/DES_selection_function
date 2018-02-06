@@ -45,6 +45,14 @@ def data_sim_division(filt, min_mag, norm_bin, nbins,plots, path_plots):
     result['err'] = errors_division
     df = pd.DataFrame(result, columns=['x', 'div', 'err'])
 
+    '''
+    Use if you want a table with data/sim vs. i mag
+    '''
+    df2 = pd.DataFrame()
+    df2['i']=df['x']
+    df2['datasim_ratio']=df['div']
+    df2.to_csv('datasim_ratio_%s.csv'%filt,index=False,sep=' ')
+
     return df
 
 

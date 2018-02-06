@@ -233,9 +233,9 @@ def mag_histos(filt, data,sim, norm_bin, min_mag, nbins,plots,path_plots):
         else:
             # setting a minimal error (if we have 0 measurements this doesn't
             # mean we have eff=0+-0)
-            error_bin = 0.01
-        if error_bin < 0.01:
-            error_bin = 0.01
+            error_bin = 0.05
+        if error_bin < 0.05:
+            error_bin = 0.05
         errors_division.append(error_bin)
     # plot division
     plt.clf()
