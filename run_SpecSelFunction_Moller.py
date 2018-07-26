@@ -49,9 +49,10 @@ def data_sim_division(filt, min_mag, norm_bin, nbins,plots, path_plots):
     Use if you want a table with data/sim vs. i mag
     '''
     df2 = pd.DataFrame()
-    df2['i']=df['x']
-    df2['datasim_ratio']=df['div']
-    df2.to_csv('datasim_ratio_%s.csv'%filt,index=False,sep=' ')
+    df2['i'] = df['x']
+    df2['datasim_ratio'] = df['div']
+    df2['error'] = df['err']
+    df2.to_csv('datasim_ratio_%s.csv' % filt,index=False,sep=' ')
 
     return df
 
@@ -65,14 +66,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Selection function data vs simulations')
     parser.add_argument('--data', type=str,
-                        default='%s/DES3YR_v1_freeze/DES3YR_DES_COMBINED_FITS/DES3YR_DES_COMBINED_FITS/FITOPT000.FITRES.gz' % (
+                        default='data_FITOPT000.FITRES.gz' % (
                             scratch_path),
                         help="Data file (ligthcurve fits: FITRES file)")
     parser.add_argument('--sim', type=str,
-                        default='%s/DES3YR_v2/DES3YR_DES_SPECEFF/DES3YR_DES_SPECEFF_AMC11/FITOPT000.FITRES.gz' % (
+                        default='sim_FITOPT000.FITRES.gz' % (
                             scratch_path),
                         help="Simulation file (ligthcurve fits: FITRES file)")
-    parser.add_argument('--nameout', type=str, default='./SPEC_EFF_Moller.DAT',
+    parser.add_argument('--nameout', type=str, default='./SEARCHEFF_SPEC_DES.DAT',
                         help="Out name for spectroscopic selection function (useful for C10,G11 distinction)")
     parser.add_argument('--plots', action="store_true", default=False,
                         help="Data / Simulation plots")
@@ -80,6 +81,8 @@ if __name__ == "__main__":
         '--path_plots', default='./plots/', help='Path to save plots')
     parser.add_argument('--onlybias', action="store_true", default=False,
                         help="Computing bias, no selection function computation")
+    parser.add_argument('--plateau', action="store_true", default=False,
+                        help="Activating plateau for sigmoid function at mag <20.7")
 
     args = parser.parse_args()
 
@@ -87,6 +90,7 @@ if __name__ == "__main__":
     fsim = args.sim
     nameout = args.nameout
     path_plots = args.path_plots
+    plateau = args.plateau 
     norm_bin = 0  # this is searching sel function
 
     '''Read data/sim files
@@ -140,4 +144,4 @@ if __name__ == "__main__":
         datsim = data_sim_division(
             filt, min_mag, norm_bin, nbins, args.plots, path_plots)
         # Emcee fit of dat/sim
-        mc.emcee_fitting(datsim, args.plots, path_plots, nameout)
+        mc.emcee_fitting(datsim, args.plots, path_plots, nameout, plateau)

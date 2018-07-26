@@ -193,7 +193,7 @@ def write_seleff(A_mcmc, alpha_mcmc, beta_mcmc, nameout):
     fout.close()
 
 
-def emcee_fitting(datsim, plots, path_plots, nameout):
+def emcee_fitting(datsim, plots, path_plots, nameout, plateau):
 
     data = datsim
 
@@ -207,12 +207,17 @@ def emcee_fitting(datsim, plots, path_plots, nameout):
     err_tmp = np.array(data[data['x'] > lim_mag]['err'])
 
     # filling max efficiency for lower magnitudes
-    mag_arr = np.arange(20, lim_mag, 0.2)
-    eff_arr = np.ones(len(mag_arr))
-    err_arr = np.divide(np.ones(len(mag_arr)), 100)
-    xdata = np.concatenate((xdata_tmp, mag_arr))
-    ydata = np.concatenate((ydata_tmp, eff_arr))
-    err = np.concatenate((err_tmp, err_arr))
+    if plateau:
+        mag_arr = np.arange(20, lim_mag, 0.2)
+        eff_arr = np.ones(len(mag_arr))
+        err_arr = np.divide(np.ones(len(mag_arr)), 100)
+        xdata = np.concatenate((xdata_tmp, mag_arr))
+        ydata = np.concatenate((ydata_tmp, eff_arr))
+        err = np.concatenate((err_tmp, err_arr))
+    else:
+        xdata = xdata_tmp
+        ydata = ydata_tmp
+        err = err_tmp
 
     d_param = {}
     d_param['A'] = (low_bounds[0], high_bounds[0])

@@ -107,7 +107,7 @@ def plots_vs_z(data, sim, path_plots,onlybias):
 
     # Physical values to use
     Mb = 19.365
-    alpha = 0.144  # from sim
+    alpha = 0.15  # from sim
     beta = 3.1
 
     # Need to define mu before binning
