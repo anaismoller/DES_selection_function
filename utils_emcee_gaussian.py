@@ -6,6 +6,7 @@ import os
 
 '''
 Module for emcee fitting a sigmoid
+assumes errors come from gaussian distribution
 2017/12/27 A. Moller
 '''
 

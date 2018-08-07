@@ -247,4 +247,4 @@ def mag_histos(filt, data,sim, norm_bin, min_mag, nbins,plots,path_plots):
     if plots:
         plt.savefig(path_plots + 'division_' + var + '.png')
 
-    return bin_centers, content_division, errors_division
+    return bin_centers, content_division, errors_division, n_data, n_sim

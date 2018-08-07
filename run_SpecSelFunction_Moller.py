@@ -2,7 +2,8 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import utils_emcee as mc
+# import utils_emcee_gaussian as mc
+import utils_emcee_poisson as mc
 import utils_plots as mplot
 import os
 
@@ -36,22 +37,26 @@ def data_sim_division(filt, min_mag, norm_bin, nbins,plots, path_plots):
     dividing data and sim to obtain the selection function
     '''
     var = 'm0obs_' + filt
-    bin_centers, content_division, errors_division = mplot.mag_histos(
+    bin_centers, content_division, errors_division, n_data, n_sim = mplot.mag_histos(
         filt, data, sim, norm_bin, min_mag, nbins, plots, path_plots)
 
     result = {}
     result['x'] = bin_centers
     result['div'] = content_division
     result['err'] = errors_division
-    df = pd.DataFrame(result, columns=['x', 'div', 'err'])
+    result['n_data'] = n_data
+    result['n_sim'] = n_sim
+    df = pd.DataFrame(result, columns=['x', 'div', 'err','n_data','n_sim'])
 
     '''
-    Use if you want a table with data/sim vs. i mag
+    Use if you want a table with data/sim i_mag
     '''
     df2 = pd.DataFrame()
     df2['i'] = df['x']
     df2['datasim_ratio'] = df['div']
     df2['error'] = df['err']
+    df2['n_sim'] = df['n_sim']
+    df2['n_data'] = df['n_data']
     df2.to_csv('datasim_ratio_%s.csv' % filt,index=False,sep=' ')
 
     return df
@@ -66,14 +71,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Selection function data vs simulations')
     parser.add_argument('--data', type=str,
-                        default='data_FITOPT000.FITRES.gz' % (
+                        default='%s/DES3YR_v1_freeze/DES3YR_DES_COMBINED_FITS/DES3YR_DES_COMBINED_FITS/FITOPT000.FITRES.gz' % (
                             scratch_path),
                         help="Data file (ligthcurve fits: FITRES file)")
     parser.add_argument('--sim', type=str,
-                        default='sim_FITOPT000.FITRES.gz' % (
+                        default='%s/DES3YR_v5/DES3YR_DES_SPECEFF/DES3YR_DES_SPECEFF_AMG10/FITOPT000.FITRES.gz' % (
                             scratch_path),
                         help="Simulation file (ligthcurve fits: FITRES file)")
-    parser.add_argument('--nameout', type=str, default='./SEARCHEFF_SPEC_DES.DAT',
+    parser.add_argument('--nameout', type=str, default='./SEARCHEFF_SPEC_DES_Moller_G10_v5.DAT',
                         help="Out name for spectroscopic selection function (useful for C10,G11 distinction)")
     parser.add_argument('--plots', action="store_true", default=False,
                         help="Data / Simulation plots")
