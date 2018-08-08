@@ -5,7 +5,8 @@ A. Moller 2018
 ______________________________________________________
 Updates:
 - 2018/08/07: errors in ratio data/sim are not binomial nor gaussian so we shouldnt use gaussian approx. in emcee model fitting.
-	implementing poisson distribution.
+	implementing poisson distribution for ndata.
+	Beware, option plateau is not implemented in this version, however, it is not needed to get a reasonable fit
 
 ______________________________________________________	
 

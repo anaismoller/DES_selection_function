@@ -84,26 +84,16 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots):
         else:
             return -np.inf
 
-    def log_likelihood(theta, x, y, ndata):
+    def log_likelihood(theta, x, y, ndata,nsim):
         A, alpha, beta = theta
         # sigmoid model for efficiency (y)
-        model = sigmoid_func(x, A, alpha,beta)
-        # Poisson likelihood of the probability of getting ndata with counts=ndata and rate=efficiency model
-        log_L = - np.sum((model) + np.log(factorial(ndata)) - (ndata * np.log(model))) 
+        model = sigmoid_func(x, A, alpha,beta) * nsim
+        # Poisson likelihood of the probability of getting ndata with counts=ndata and rate=ideal number of events
+        log_L = - np.sum((model) + np.log(factorial(ndata)) - (ndata * np.log(model)))
         return log_L
 
-    # def log_likelihood(theta, x, y):
-    #     A, alpha, beta = theta
-    #     err = 0.1*np.ones(len(x))
-
-    #     model = sigmoid_func(x, A, alpha, beta)
-
-    #     log_L = -0.5 * np.sum(np.log(2 * np.pi * (err**2)
-    #                                  ) + (y - model)**2 / err**2)
-    #     return log_L
-
-    def log_posterior(theta, x, y, ndata):
-        return log_prior(theta) + log_likelihood(theta, x, y, ndata)
+    def log_posterior(theta, x, y, ndata,nsim):
+        return log_prior(theta) + log_likelihood(theta, x, y, ndata,nsim)
 
     # Here we'll set up the computation. emcee combines multiple "walkers",
     # each of which is its own MCMC chain. The number of trace results will
@@ -119,7 +109,7 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots):
 
     # Here's the function call where all the work happens:
     sampler = emcee.EnsembleSampler(
-        nwalkers, ndim, log_posterior, args=[xdata, ydata, ndata])
+        nwalkers, ndim, log_posterior, args=[xdata, ydata, ndata,nsim])
 
     # Clear and run the production chain.
     pos_ini = [np.mean(d_param[key]) for key in d_param.keys()]
@@ -127,7 +117,7 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots):
     sampler.run_mcmc(pos, nsteps, rstate0=np.random.get_state())
     if plots:
         for var in range(ndim):
-            print('.  plotting line time')
+            # print('.  plotting line time')
             plt.clf()
             plt.plot(sampler.chain[:, :, var].T, color="k", alpha=0.4)
             plt.savefig('plots/line-time_' + str(var) + '.png')
@@ -143,7 +133,7 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots):
     min_theta_mcmc = [p[0] - p[1] for p in list_mcmc]
     max_theta_mcmc = [p[0] + p[2] for p in list_mcmc]
     list_mcmc = map(str, list_mcmc)
-    print("value +/-")
+    print(">> Emcee fitted value for efficiency sigmoid +/-")
     print("\n".join(list_mcmc))
 
     if plots:
@@ -240,8 +230,11 @@ def emcee_fitting(datsim, plots, path_plots, nameout, plateau):
                            xdata, ydata)
     print('   Functional initial guess')
     print('   ',popt)
-    low_bounds = [p - 2 * p / 10. for p in popt]
-    high_bounds = [p + 2 * p / 10. for p in popt]
+    low_bounds = [p - 3 * p / 10. for p in popt]
+    high_bounds = [p + 3 * p / 10. for p in popt]
+    # the efficiency can't be alrger than 1
+    if high_bounds[0] > 1.:
+        high_bounds[0] = 1.
     print('.  low/high now',low_bounds,high_bounds)
     if plots:
         plt.clf()
