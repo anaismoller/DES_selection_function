@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import emcee
 from scipy.special import factorial
+from chainconsumer import ChainConsumer
+from scipy.optimize import curve_fit
 
 '''
 Module for emcee fitting a sigmoid
@@ -42,6 +44,7 @@ def plot_MCMC_trace(ax, xdata, ydata, trace, scatter=False, **kwargs):
     ax.set_xlabel(r'$\alpha$')
     ax.set_ylabel(r'$\beta$')
 
+
 def plot_MCMC_model(ax, xdata, ydata, trace):
     """Plot the model and 2sigma contours"""
     ax.plot(xdata, ydata, 'ok')
@@ -66,15 +69,10 @@ def plot_MCMC_results(xdata, ydata, trace, colors='k'):
     plot_MCMC_model(ax[1], xdata, ydata, trace)
 
 
-def fit_MCMC(d_param, xdata, ydata, plots,path_plots):
+def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots):
     alpha_low, alpha_high = d_param['alpha']
     beta_low, beta_high = d_param['beta']
     A_low, A_high = d_param['A']
-
-    def y_model(x, theta):
-        A, alpha, beta = theta
-        y_model = A / (1 + np.exp((alpha * x) + beta))
-        return y_model
 
     # Define our posterior using Python functions
     def log_prior(theta):  # flat prior for all parameters
@@ -86,16 +84,26 @@ def fit_MCMC(d_param, xdata, ydata, plots,path_plots):
         else:
             return -np.inf
 
-    def log_likelihood(theta, x, y):
+    def log_likelihood(theta, x, y, ndata):
         A, alpha, beta = theta
-
-        model = y_model(x, theta)
-
-        log_L = np.sum(- model - np.log(factorial(y)) + np.log(np.power(model,y)))
+        # sigmoid model for efficiency (y)
+        model = sigmoid_func(x, A, alpha,beta)
+        # Poisson likelihood of the probability of getting ndata with counts=ndata and rate=efficiency model
+        log_L = - np.sum((model) + np.log(factorial(ndata)) - (ndata * np.log(model))) 
         return log_L
 
-    def log_posterior(theta, x, y):
-        return log_prior(theta) + log_likelihood(theta, x, y)
+    # def log_likelihood(theta, x, y):
+    #     A, alpha, beta = theta
+    #     err = 0.1*np.ones(len(x))
+
+    #     model = sigmoid_func(x, A, alpha, beta)
+
+    #     log_L = -0.5 * np.sum(np.log(2 * np.pi * (err**2)
+    #                                  ) + (y - model)**2 / err**2)
+    #     return log_L
+
+    def log_posterior(theta, x, y, ndata):
+        return log_prior(theta) + log_likelihood(theta, x, y, ndata)
 
     # Here we'll set up the computation. emcee combines multiple "walkers",
     # each of which is its own MCMC chain. The number of trace results will
@@ -111,12 +119,18 @@ def fit_MCMC(d_param, xdata, ydata, plots,path_plots):
 
     # Here's the function call where all the work happens:
     sampler = emcee.EnsembleSampler(
-        nwalkers, ndim, log_posterior, args=[xdata, ydata])
+        nwalkers, ndim, log_posterior, args=[xdata, ydata, ndata])
 
     # Clear and run the production chain.
     pos_ini = [np.mean(d_param[key]) for key in d_param.keys()]
     pos = [pos_ini + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)]
     sampler.run_mcmc(pos, nsteps, rstate0=np.random.get_state())
+    if plots:
+        for var in range(ndim):
+            print('.  plotting line time')
+            plt.clf()
+            plt.plot(sampler.chain[:, :, var].T, color="k", alpha=0.4)
+            plt.savefig('plots/line-time_' + str(var) + '.png')
 
     samples = sampler.chain[:, nburn:, :].reshape((-1, ndim))
     plot_MCMC_results(xdata, ydata, samples)
@@ -124,21 +138,31 @@ def fit_MCMC(d_param, xdata, ydata, plots,path_plots):
     A_mcmc, alpha_mcmc, beta_mcmc = map(lambda v: (v[1], v[2] - v[1], v[1] - v[0]),
                                         zip(*np.percentile(samples, [16, 50, 84],
                                                            axis=0)))
-    print(' fitted',A_mcmc, alpha_mcmc, beta_mcmc)
     list_mcmc = [A_mcmc, alpha_mcmc, beta_mcmc]
     theta_mcmc = [p[0] for p in list_mcmc]
+    min_theta_mcmc = [p[0] - p[1] for p in list_mcmc]
+    max_theta_mcmc = [p[0] + p[2] for p in list_mcmc]
     list_mcmc = map(str, list_mcmc)
-    # print "value +/-"
-    # print "\n".join(list_mcmc)
+    print("value +/-")
+    print("\n".join(list_mcmc))
 
     if plots:
+        # do corner plot
         plt.clf()
-        xx = np.linspace(xdata.min(), 24, 200)
-        plt.plot(xx, y_model(xx, theta_mcmc), color='orange',
-                 label='Emcee sigmoid fit')  # mcmc fit
+        c = ChainConsumer()
+        c.add_chain(samples, parameters=['a','alpha','beta'])
+        fig = c.plotter.plot(filename=path_plots + "/triangle.png", figsize="column")
+
+        plt.clf()
+        xx = np.linspace(xdata.min(), 25, 200)
+        plt.plot(xx, sigmoid_func(xx, min_theta_mcmc[0],min_theta_mcmc[1],min_theta_mcmc[2]), color='yellow',)
+        plt.plot(xx, sigmoid_func(xx, max_theta_mcmc[0],max_theta_mcmc[1],max_theta_mcmc[2]), color='yellow',
+                 label='84 percentaile')  # mcmc fit
+        plt.plot(xx, sigmoid_func(xx, theta_mcmc[0],theta_mcmc[1],theta_mcmc[2]),
+                 color='orange', label='Emcee sigmoid fit')  # mcmc fit
         plt.scatter(xdata, ydata, color='blue',
                     label="emcee selection function")
-        plt.ylim(-.1, 1)
+        plt.ylim(-.1, 1.1)
         plt.xlabel('mag')
         plt.legend()
         plt.savefig(path_plots + '/fitted_model_mcmc_i.png')
@@ -146,8 +170,8 @@ def fit_MCMC(d_param, xdata, ydata, plots,path_plots):
     return theta_mcmc
 
 
-def sigmoid_fit_func(x, a, alph, bet):
-    return a / (1 + np.exp((+alph * x) + bet))
+def sigmoid_func(x, a, alph, bet):
+    return a / (1 + np.exp((+alph * x) - bet))
 
 
 def write_seleff(A_mcmc, alpha_mcmc, beta_mcmc, nameout):
@@ -165,7 +189,7 @@ def write_seleff(A_mcmc, alpha_mcmc, beta_mcmc, nameout):
     min_mag = 18
     mag = np.arange(min_mag, 25.9, 0.1)
     # create fit with emcee found parameters
-    sigmoid_arr = np.around(sigmoid_fit_func(
+    sigmoid_arr = np.around(sigmoid_func(
         mag, A_mcmc, alpha_mcmc, beta_mcmc), decimals=2)
     # in case my sigmoid goes outside bounds
     sigmoid_arr[sigmoid_arr > 1] = 1
@@ -197,23 +221,39 @@ def emcee_fitting(datsim, plots, path_plots, nameout, plateau):
 
     data = datsim
 
-    # Initial params for fit
-    low_bounds = [1., 2, -55]
-    high_bounds = [2, 3.4, -43]
-    lim_mag = 20.7
-
-    xdata_tmp = np.array(data[data['x'] > lim_mag]['x'])
-    ydata_tmp = np.array(data[data['x'] > lim_mag]['div'])
+    lim_mag = 19.  # 20.7
+    xdata = np.array(data[data['x'] > lim_mag]['x'])
+    ydata = np.array(data[data['x'] > lim_mag]['div'])
+    ndata = np.array(data[data['x'] > lim_mag]['n_data'])
+    nsim = np.array(data[data['x'] > lim_mag]['n_sim'])
 
     # filling max efficiency for lower magnitudes
     if plateau:
-        mag_arr = np.arange(20, lim_mag, 0.2)
-        eff_arr = np.ones(len(mag_arr))
-        xdata = np.concatenate((xdata_tmp, mag_arr))
-        ydata = np.concatenate((ydata_tmp, eff_arr))
-    else:
-        xdata = xdata_tmp
-        ydata = ydata_tmp
+        print('!!! BEWARE !!!')
+        print('Plateau and poisson is not properly implemented')
+
+    # Initial params for fit
+    low_bounds = [0.1, 1., 20]
+    high_bounds = [4, 4, 70]
+    # first guess
+    popt, pcov = curve_fit(sigmoid_func,
+                           xdata, ydata)
+    print('   Functional initial guess')
+    print('   ',popt)
+    low_bounds = [p - 2 * p / 10. for p in popt]
+    high_bounds = [p + 2 * p / 10. for p in popt]
+    print('.  low/high now',low_bounds,high_bounds)
+    if plots:
+        plt.clf()
+        xx = np.linspace(xdata.min(), 25, 200)
+        plt.plot(xx, sigmoid_func(xx, popt[0], popt[1], popt[2]), color='orange',
+                 label='Functional sigmoid fit')  # mcmc fit
+        plt.scatter(xdata, ydata, color='blue',
+                    label="data rate")
+        plt.ylim(-.1, 1.1)
+        plt.xlabel('mag')
+        plt.legend()
+        plt.savefig(path_plots + '/fitted_model_func_i.png')
 
     d_param = {}
     d_param['A'] = (low_bounds[0], high_bounds[0])
@@ -221,8 +261,9 @@ def emcee_fitting(datsim, plots, path_plots, nameout, plateau):
     d_param['beta'] = (low_bounds[2], high_bounds[2])
 
     print('>> Emcee: fitting a sigmoid to data/simulation in mag i bins')
+    print('          using Poisson distribution')
     A_mcmc, alpha_mcmc, beta_mcmc = fit_MCMC(
-        d_param, xdata, ydata, plots, path_plots)
+        d_param, xdata, ydata, ndata, nsim, plots, path_plots)
     print('   Finished emcee')
 
     # write the selection function

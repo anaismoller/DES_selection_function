@@ -104,7 +104,7 @@ if __name__ == "__main__":
     print('>> Reading data/sim and copying/unzipping if needed')
     print('   data: %s' % fdata)
     if '.gz' in fdata:
-        print('   Copy & unzip %s' % (fdata))
+        print('       copy & unzip %s' % (fdata))
         newfdata = copy_uncompress(fdata)
         fdata = newfdata
         data = load_fitres(fdata)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     print('   sim: %s' % fsim)
     if '.gz' in fsim:
-        print('   Copy & unzip %s' % (fsim))
+        print('       copy & unzip %s' % (fsim))
         newfsim = copy_uncompress(fsim)
         fsim = newfsim
         sim = load_fitres(fsim)

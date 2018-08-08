@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import emcee
-import os
+from chainconsumer import ChainConsumer
 
 '''
 Module for emcee fitting a sigmoid
@@ -133,16 +133,22 @@ def fit_MCMC(d_param, xdata, ydata, err, plots,path_plots):
     # print "\n".join(list_mcmc)
 
     if plots:
+        # do corner plot
+        plt.clf()
+        c = ChainConsumer()
+        c.add_chain(samples, parameters=['a','alpha','beta'])
+        fig = c.plotter.plot(filename=path_plots + "/triangle.png", figsize="column")
+
         plt.clf()
         xx = np.linspace(xdata.min(), 24, 200)
         plt.plot(xx, y_model(xx, theta_mcmc), color='orange',
                  label='Emcee sigmoid fit')  # mcmc fit
-        plt.errorbar(xdata, ydata, yerr=err, fmt='o', color='blue',
-                     label="emcee selection function")
+        plt.scatter(xdata, ydata, color='blue',
+                    label="emcee selection function")
         plt.ylim(-.1, 1)
         plt.xlabel('mag')
         plt.legend()
-        plt.savefig(path_plots+'/fitted_model_mcmc_i.png')
+        plt.savefig(path_plots + '/fitted_model_mcmc_i.png')
 
     return theta_mcmc
 
