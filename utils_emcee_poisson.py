@@ -5,11 +5,15 @@ import emcee
 from scipy.special import factorial
 from chainconsumer import ChainConsumer
 from scipy.optimize import curve_fit
+import os
 
 '''
-Module for emcee fitting a sigmoid
-assumes distribution is poisson
 2018/08/07 A. Moller
+
+Module for emcee fitting of a sigmoid for efficiency
+assumes:
+    ndata distribution is poisson
+    nsim is given (systematic evaluated using validation sims)
 '''
 
 
@@ -69,7 +73,7 @@ def plot_MCMC_results(xdata, ydata, trace, colors='k'):
     plot_MCMC_model(ax[1], xdata, ydata, trace)
 
 
-def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots):
+def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots, verbose,validation,nameout):
     alpha_low, alpha_high = d_param['alpha']
     beta_low, beta_high = d_param['beta']
     A_low, A_high = d_param['A']
@@ -133,8 +137,20 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots):
     min_theta_mcmc = [p[0] - p[1] for p in list_mcmc]
     max_theta_mcmc = [p[0] + p[2] for p in list_mcmc]
     list_mcmc = map(str, list_mcmc)
-    print(">> Emcee fitted value for efficiency sigmoid +/-")
-    print("\n".join(list_mcmc))
+    if verbose:
+        print(">> Emcee fitted value for efficiency sigmoid +/-")
+        print("\n".join(list_mcmc))
+    if validation:
+        fname = "validation_fit_values.txt"
+        if not os.path.exists(fname):
+            outF = open(fname, "w")
+            outF.write('fname a alpha beta a_min alpha_min beta_min a_max alpha_max beta_max \n')
+        else:
+            outF = open(fname, "a")
+        output = nameout + ' ' + ' '.join(str(x) for x in theta_mcmc) + ' ' + ' '.join(str(x)
+                                                                       for x in min_theta_mcmc) + ' ' + ' '.join(str(x) for x in max_theta_mcmc) + '\n'
+        outF.write(output)
+        outF.close()
 
     if plots:
         # do corner plot
@@ -145,12 +161,13 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots):
 
         plt.clf()
         xx = np.linspace(xdata.min(), 25, 200)
-        plt.plot(xx, sigmoid_func(xx, min_theta_mcmc[0],min_theta_mcmc[1],min_theta_mcmc[2]), color='yellow',)
-        plt.plot(xx, sigmoid_func(xx, max_theta_mcmc[0],max_theta_mcmc[1],max_theta_mcmc[2]), color='yellow',
-                 label='84 percentaile')  # mcmc fit
-        plt.plot(xx, sigmoid_func(xx, theta_mcmc[0],theta_mcmc[1],theta_mcmc[2]),
+        plt.plot(xx, sigmoid_func(xx, min_theta_mcmc[0],min_theta_mcmc[1],
+                                  min_theta_mcmc[2]) / theta_mcmc[0], color='yellow',)
+        plt.plot(xx, sigmoid_func(xx, max_theta_mcmc[0],max_theta_mcmc[1],max_theta_mcmc[2]) / theta_mcmc[0], color='yellow',
+                 label='1 sigma')  # mcmc fit
+        plt.plot(xx, sigmoid_func(xx, theta_mcmc[0],theta_mcmc[1],theta_mcmc[2]) / theta_mcmc[0],
                  color='orange', label='Emcee sigmoid fit')  # mcmc fit
-        plt.scatter(xdata, ydata, color='blue',
+        plt.scatter(xdata, ydata / theta_mcmc[0], color='blue',
                     label="emcee selection function")
         plt.ylim(-.1, 1.1)
         plt.xlabel('mag')
@@ -180,13 +197,16 @@ def write_seleff(A_mcmc, alpha_mcmc, beta_mcmc, nameout):
     mag = np.arange(min_mag, 25.9, 0.1)
     # create fit with emcee found parameters
     sigmoid_arr = np.around(sigmoid_func(
-        mag, A_mcmc, alpha_mcmc, beta_mcmc), decimals=2)
+        mag, 1., alpha_mcmc, beta_mcmc), decimals=2)
+    # normalizing to 1
+    sigmoid_arr = sigmoid_arr
     # in case my sigmoid goes outside bounds
     sigmoid_arr[sigmoid_arr > 1] = 1
     sigmoid_arr[sigmoid_arr < 0] = 0
 
     df = pd.DataFrame()
     df["eff"] = sigmoid_arr
+    df["eff"] = df["eff"].astype(float).round(2)
     df["mag_i"] = mag
     df["i"] = df["mag_i"].astype(float).round(2)
 
@@ -207,7 +227,7 @@ def write_seleff(A_mcmc, alpha_mcmc, beta_mcmc, nameout):
     fout.close()
 
 
-def emcee_fitting(datsim, plots, path_plots, nameout, plateau):
+def emcee_fitting(datsim, plots, path_plots, nameout, verbose,validation):
 
     data = datsim
 
@@ -217,31 +237,25 @@ def emcee_fitting(datsim, plots, path_plots, nameout, plateau):
     ndata = np.array(data[data['x'] > lim_mag]['n_data'])
     nsim = np.array(data[data['x'] > lim_mag]['n_sim'])
 
-    # filling max efficiency for lower magnitudes
-    if plateau:
-        print('!!! BEWARE !!!')
-        print('Plateau and poisson is not properly implemented')
-
     # Initial params for fit
     low_bounds = [0.1, 1., 20]
     high_bounds = [4, 4, 70]
     # first guess
     popt, pcov = curve_fit(sigmoid_func,
                            xdata, ydata)
-    print('   Functional initial guess')
-    print('   ',popt)
+    if verbose:
+        print('   Functional initial guess')
+        print('   ',popt)
     low_bounds = [p - 3 * p / 10. for p in popt]
     high_bounds = [p + 3 * p / 10. for p in popt]
-    # the efficiency can't be alrger than 1
-    if high_bounds[0] > 1.:
-        high_bounds[0] = 1.
-    print('.  low/high now',low_bounds,high_bounds)
+    if verbose:
+        print('.  low/high now',low_bounds,high_bounds)
     if plots:
         plt.clf()
         xx = np.linspace(xdata.min(), 25, 200)
-        plt.plot(xx, sigmoid_func(xx, popt[0], popt[1], popt[2]), color='orange',
+        plt.plot(xx, sigmoid_func(xx, popt[0], popt[1], popt[2]) / popt[0], color='orange',
                  label='Functional sigmoid fit')  # mcmc fit
-        plt.scatter(xdata, ydata, color='blue',
+        plt.scatter(xdata, ydata / popt[0], color='blue',
                     label="data rate")
         plt.ylim(-.1, 1.1)
         plt.xlabel('mag')
@@ -253,13 +267,13 @@ def emcee_fitting(datsim, plots, path_plots, nameout, plateau):
     d_param['alpha'] = (low_bounds[1], high_bounds[1])
     d_param['beta'] = (low_bounds[2], high_bounds[2])
 
-    print('>> Emcee: fitting a sigmoid to data/simulation in mag i bins')
-    print('          using Poisson distribution')
+    if verbose:
+        print('>> Emcee: fitting a sigmoid to data/simulation in mag i bins')
+        print('          using Poisson distribution')
     A_mcmc, alpha_mcmc, beta_mcmc = fit_MCMC(
-        d_param, xdata, ydata, ndata, nsim, plots, path_plots)
-    print('   Finished emcee')
-
-    # write the selection function
-    print('>> Write selection function %s' % (nameout))
+        d_param, xdata, ydata, ndata, nsim, plots, path_plots,verbose,validation,nameout)
+    if verbose:
+        print('   Finished emcee')
+        # write the selection function
+        print('>> Write selection function %s' % (nameout))
     write_seleff(A_mcmc, alpha_mcmc, beta_mcmc, nameout)
-    print('   Finished writting selection function %s' % (nameout))

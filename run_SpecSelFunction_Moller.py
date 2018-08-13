@@ -7,6 +7,17 @@ import utils_emcee_poisson as mc
 import utils_plots as mplot
 import os
 
+'''
+2018/08/07 A. Moller
+
+Obtain spectroscopic selection efficiency
+using ratio data/sim (spec confirmed SNe Ia/simulated Ias)
+2018/08/13 
+normalizes the simulation to have perfect efficiency at the bright tail
+normalization comes from sigmoid fit, beware this makes the +1sigma above 1 eff!
+
+'''
+
 
 def copy_uncompress(fname):
     import gzip
@@ -17,19 +28,24 @@ def copy_uncompress(fname):
     return thisfname
 
 
-def load_fitres(filepath):
+def load_fitres(filepath,validation=False,nsn=-1):
     '''Load light curve fit file and apply cuts    
     Arguments:
         filepath (str) -- Lightcurve fit file with path   
     Returns:
         pandas dataframe 
     '''
-    filetoload = pd.read_csv(filepath, index_col=False,
-                             comment='#', delimiter=' ', skiprows=11, skipinitialspace=True)
+    skiprows = 11
+    filetoload = pd.read_csv(filepath, index_col=False,comment='#', delimiter=' ',
+                             skiprows=skiprows, skipinitialspace=True)
     tmp = filetoload[(filetoload['c'] > -0.3) & (filetoload['c'] < 0.3) & (filetoload['x1'] > -3) & (filetoload['x1']
                                                                                                      < 3) & (filetoload['zHD'] > 0.05) & (filetoload['zHD'] < 0.9) & (filetoload['FITPROB'] > 1E-05)]
     df = tmp.copy()
-    return df
+    if nsn != -1:
+        dfout = df[:int(nsn)]
+    else:
+        dfout = df
+    return dfout
 
 
 def data_sim_division(filt, min_mag, norm_bin, nbins,plots, path_plots):
@@ -64,7 +80,7 @@ def data_sim_division(filt, min_mag, norm_bin, nbins,plots, path_plots):
 
 if __name__ == "__main__":
 
-    scratch_path = os.environ["SCRATCH_FITDIR"]
+    scratch_path = os.environ.get("SCRATCH_FITDIR")
 
     '''Parse arguments
     '''
@@ -86,8 +102,9 @@ if __name__ == "__main__":
         '--path_plots', default='./plots/', help='Path to save plots')
     parser.add_argument('--onlybias', action="store_true", default=False,
                         help="Computing bias, no selection function computation")
-    parser.add_argument('--plateau', action="store_true", default=False,
-                        help="Activating plateau for sigmoid function at mag <20.7")
+    parser.add_argument('--verbose',action='store_true', default=False)
+    parser.add_argument('--validation',action='store_true', default=False,help='save fit parameters in text file')
+    parser.add_argument('--nsn',default=-1,help='limit number of SNe used in fit')
 
     args = parser.parse_args()
 
@@ -95,32 +112,52 @@ if __name__ == "__main__":
     fsim = args.sim
     nameout = args.nameout
     path_plots = args.path_plots
-    plateau = args.plateau 
-    norm_bin = 0  # this is searching sel function
+    nsn = args.nsn
+    # no normalization
+    # normalization is now taken into account in the sigmoid fit
+    norm_bin = -1
 
     '''Read data/sim files
         if required copy,uncompress,read,clean
     '''
-    print('>> Reading data/sim and copying/unzipping if needed')
+    print('___________________')
     print('   data: %s' % fdata)
+    print('   sim: %s' % fsim)
     if '.gz' in fdata:
-        print('       copy & unzip %s' % (fdata))
+        if args.verbose:
+            print('       copy & unzip %s' % (fdata))
         newfdata = copy_uncompress(fdata)
         fdata = newfdata
-        data = load_fitres(fdata)
+        data = load_fitres(fdata,nsn=nsn)
         os.remove(newfdata)
     else:
-        data = load_fitres(fdata)
+        data = load_fitres(fdata,nsn=nsn)
 
-    print('   sim: %s' % fsim)
     if '.gz' in fsim:
-        print('       copy & unzip %s' % (fsim))
+        if args.verbose:
+            print('       copy & unzip %s' % (fsim))
         newfsim = copy_uncompress(fsim)
         fsim = newfsim
-        sim = load_fitres(fsim)
+        sim = load_fitres(fsim,validation=args.validation)
         os.remove(newfsim)
     else:
-        sim = load_fitres(fsim)
+        sim = load_fitres(fsim,validation=args.validation)
+
+    if not args.onlybias:
+        '''Selection Function
+        compute selection function by dividing data/sim by magnitude bin
+        '''
+        print('   Computing selection function')
+        print('   Method: Data vs. Simulations (A. Moller)')
+        # Init
+        nbins = 20
+        filt = 'i'
+        min_mag = 20  # where are we complete? here you need a human choice, or do we?
+        # Data vs Sim
+        datsim = data_sim_division(
+            filt, min_mag, norm_bin, nbins, args.plots, path_plots)
+        # Emcee fit of dat/sim
+        mc.emcee_fitting(datsim, args.plots, path_plots, nameout,args.verbose,args.validation)
 
     '''Plots
         (optional)
@@ -134,19 +171,3 @@ if __name__ == "__main__":
         norm = mplot.distribution_plots(norm_bin, data, sim, path_plots)
         # c,x1 as a function of z
         mplot.plots_vs_z(data, sim, path_plots,args.onlybias)
-
-    if not args.onlybias:
-        '''Selection Function
-        compute selection function by dividing data/sim by magnitude bin
-        '''
-        print('>> Computing selection function')
-        print('   Method: Data vs. Simulations (A. Moller)')
-        # Init
-        nbins = 20
-        filt = 'i'
-        min_mag = 20  # where are we complete? here you need a human choice, or do we?
-        # Data vs Sim
-        datsim = data_sim_division(
-            filt, min_mag, norm_bin, nbins, args.plots, path_plots)
-        # Emcee fit of dat/sim
-        mc.emcee_fitting(datsim, args.plots, path_plots, nameout, plateau)
