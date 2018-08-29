@@ -148,7 +148,19 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots, verbose,valida
         else:
             outF = open(fname, "a")
         output = nameout + ' ' + ' '.join(str(x) for x in theta_mcmc) + ' ' + ' '.join(str(x)
-                                                                       for x in min_theta_mcmc) + ' ' + ' '.join(str(x) for x in max_theta_mcmc) + '\n'
+                                                                                       for x in min_theta_mcmc) + ' ' + ' '.join(str(x) for x in max_theta_mcmc) + '\n'
+        outF.write(output)
+        outF.close()
+    else:
+        # saving speceff params
+        fname = "%s_fitparams.txt" % str(nameout.strip('.DAT').strip('/'))
+        if not os.path.exists(fname):
+            outF = open(fname, "w+")
+            outF.write('fname a alpha beta a_min alpha_min beta_min a_max alpha_max beta_max \n')
+        else:
+            outF = open(fname, "a")
+        output = nameout + ' ' + ' '.join(str(x) for x in theta_mcmc) + ' ' + ' '.join(str(x)
+                                                                                       for x in min_theta_mcmc) + ' ' + ' '.join(str(x) for x in max_theta_mcmc) + '\n'
         outF.write(output)
         outF.close()
 

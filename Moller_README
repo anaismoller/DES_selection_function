@@ -1,9 +1,17 @@
-How to get the Spectroscopic Selection function 
-using method: data vs simulations?
-
+Spectroscopic Selection Function
+DES 3YR analysis
 A. Moller
+
+Contents:
+
+A. How to get the Spectroscopic Selection function 
+using method: data vs simulations?
+B. Compute bias
+C. Validating with sims
 ______________________________________________________
 
+A. How to get the Spectroscopic Selection function 
+using method: data vs simulations?
 
 0. run simulations and fits 
 	S. Hinton code
@@ -17,11 +25,9 @@ ______________________________________________________
 	--data
    	 Data file (ligthcurve fits: FITRES file)
     	
-
 	--sim	
     	Sim file (ligthcurve fits: FITRES file)
     	
-
 	--nameout
    	 Out name for spectroscopic selection function (useful for C10,G11 distinction)
     	default=./SPEC_EFF_Moller.DAT
@@ -39,9 +45,23 @@ ______________________________________________________
 	--plateau
 	Activating plateau for sigmoid function at mag <20.7
 
-How to get the bias? computing for AMG10, AMc11, CdAndrea v 2.3
+______________________________________________________
+
+B. How to get the bias? computing for AMG10, AMc11, CdAndrea v 2.3
 0. run simulations and fits
 	modified S. Hinton code
 		RUN_SIM_SPECEFF_BIAS_DES.sh
 1. call for example
 	python run_SpecSelFunction_Moller.py --sim FITOPT000.FITRES.gz --onlybias --path_plots bias_AMG10 	
+
+______________________________________________________
+
+C. Validating with sims
+NB: steps 0,1 needed only if new version of speceff is used.
+0. run simulations and fits as step A0.
+1. get spectroscopic selection function as step A1
+
+2. Run specselfcuntion with validation as data
+	bash run_validation.sh
+3. python plot_validation_fit_dispersion.py
+	(modified code from D. Brout, results in speceff_validation)

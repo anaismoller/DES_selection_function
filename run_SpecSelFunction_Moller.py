@@ -91,10 +91,10 @@ if __name__ == "__main__":
                             scratch_path),
                         help="Data file (ligthcurve fits: FITRES file)")
     parser.add_argument('--sim', type=str,
-                        default='%s/DES3YR_v5/DES3YR_DES_SPECEFF/DES3YR_DES_SPECEFF_AMG10/FITOPT000.FITRES.gz' % (
+                        default='%s/DES3YR_v7/DES3YR_DES_SPECEFF/DES3YR_DES_SPECEFF_AMG10/FITOPT000.FITRES.gz' % (
                             scratch_path),
                         help="Simulation file (ligthcurve fits: FITRES file)")
-    parser.add_argument('--nameout', type=str, default='./SEARCHEFF_SPEC_DES_Moller_G10_v5.DAT',
+    parser.add_argument('--nameout', type=str, default='./SEARCHEFF_SPEC_DES_Moller_G10_v7.DAT',
                         help="Out name for spectroscopic selection function (useful for C10,G11 distinction)")
     parser.add_argument('--plots', action="store_true", default=False,
                         help="Data / Simulation plots")
