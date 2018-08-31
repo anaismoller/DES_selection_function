@@ -65,3 +65,4 @@ NB: steps 0,1 needed only if new version of speceff is used.
 	bash run_validation.sh
 3. python plot_validation_fit_dispersion.py
 	(modified code from D. Brout, results in speceff_validation)
+	outputs corrections and bias in snana format

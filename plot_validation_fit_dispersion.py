@@ -80,6 +80,30 @@ def plot_rate_speceffs(df,input_sim_values,model,nameout):
     return xx, ymeans,ysigma
 
 
+def save_to_snana_format(df,study_type):
+
+    for var in ['bias','onesigma']:
+        for model in model_list:
+            # to modify column names just
+            # change "i" and "SPECEFF" here and in the rest of the function
+            # to whatever you want
+            df["i"] = df["x"].astype(float).round(2)
+            df['SPECEFF'] = df["%s_%s" % (var, model)].astype(float).round(2)
+            # column speceff
+            new_i = df.fillna(method='bfill')
+            charar = np.chararray(len(new_i), itemsize=8)
+            charar[:] = 'SPECEFF:'
+            df["VARNAMES:"] = charar
+            df2 = pd.DataFrame(df, columns=['VARNAMES:', 'i', 'SPECEFF'])
+
+            # save
+            nameout = 'speceff_validation/SPECEFF_%s_%s_%s.DAT' % (study_type,var,model)
+            fout = open(nameout, "w")
+            fout.write("NVAR: 2 \n")
+            df2.to_csv(fout, sep=" ", index=False)
+            fout.close()
+
+
 # init
 model_list = ['G10','C11']
 # plot settings
@@ -129,7 +153,9 @@ for m in model_list:
     plt.xlabel('speceff')
     plt.savefig('speceff_validation/plots/snana_%s.png' % m)
 
-out_snana_df.to_csv('corrections_speceff_snana_binning.csv',index=False)
+# saving snana binning
+# out_snana_df.to_csv('speceff_validation/corrections_speceff_snana_binning.csv',index=False)
+save_to_snana_format(out_snana_df,'snana')
 
 # ratio fitted specsel for validation / sigmoid spec function provided to sim (direct parameters)
 xx_smoothed = {}
@@ -164,4 +190,6 @@ for m in model_list:
     plt.xlabel('mag')
     plt.xlabel('speceff')
     plt.savefig('speceff_validation/plots/smoothed_%s.png' % m)
-out_smoothed_df.to_csv('corrections_speceff_smoothed_binning.csv',index=False)
+
+# out_smoothed_df.to_csv('speceff_validation/corrections_speceff_smoothed_binning.csv',index=False)
+save_to_snana_format(out_smoothed_df,'smoothed')
