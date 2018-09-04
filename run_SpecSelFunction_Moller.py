@@ -19,6 +19,11 @@ normalization comes from sigmoid fit, beware this makes the +1sigma above 1 eff!
 '''
 
 
+def calculate_sigmoid(row,min_theta_mcmc, theta_mcmc):
+    return mc.sigmoid_func(row, min_theta_mcmc[0],min_theta_mcmc[1],
+                           min_theta_mcmc[2]) / theta_mcmc[0]
+
+
 def copy_uncompress(fname):
     import gzip
     import shutil
@@ -70,12 +75,11 @@ def data_sim_division(filt, min_mag, norm_bin, nbins,plots, path_plots):
     df2 = pd.DataFrame()
     df2['i'] = df['x']
     df2['datasim_ratio'] = df['div']
-    df2['error'] = df['err']
+    # df2['error'] = df['err']
     df2['n_sim'] = df['n_sim']
     df2['n_data'] = df['n_data']
-    df2.to_csv('datasim_ratio_%s.csv' % filt,index=False,sep=' ')
 
-    return df
+    return df, df2
 
 
 if __name__ == "__main__":
@@ -99,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument('--plots', action="store_true", default=False,
                         help="Data / Simulation plots")
     parser.add_argument(
-        '--path_plots', default='./plots/', help='Path to save plots')
+        '--path_plots', default=None, help='Path to save plots')
     parser.add_argument('--onlybias', action="store_true", default=False,
                         help="Computing bias, no selection function computation")
     parser.add_argument('--verbose',action='store_true', default=False)
@@ -111,8 +115,19 @@ if __name__ == "__main__":
     fdata = args.data
     fsim = args.sim
     nameout = args.nameout
-    path_plots = args.path_plots
     nsn = args.nsn
+
+    model = args.sim.split('/')[-2][-3:]
+    version = args.sim.split('/')[-4][-2:]
+
+    if args.path_plots:
+        path_plots = args.path_plots
+    else:
+        path_plots = './plots_%s_%s/' % (model,version)
+    if args.plots:
+        if not os.path.exists(path_plots):
+            os.makedirs(path_plots)
+
     # no normalization
     # normalization is now taken into account in the sigmoid fit
     norm_bin = -1
@@ -154,10 +169,22 @@ if __name__ == "__main__":
         filt = 'i'
         min_mag = 20  # where are we complete? here you need a human choice, or do we?
         # Data vs Sim
-        datsim = data_sim_division(
+        datsim, datsim_tosave = data_sim_division(
             filt, min_mag, norm_bin, nbins, args.plots, path_plots)
         # Emcee fit of dat/sim
-        mc.emcee_fitting(datsim, args.plots, path_plots, nameout,args.verbose,args.validation)
+        theta_mcmc, min_theta_mcmc, max_theta_mcmc = mc.emcee_fitting(
+            datsim, args.plots, path_plots, nameout,args.verbose,args.validation)
+
+        # add model errors to csv
+        datsim_tosave['datasim_ratio_normalized'] = datsim_tosave['datasim_ratio'] / theta_mcmc[0]
+        datsim_tosave['model'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
+            datsim_tosave['i'],theta_mcmc,theta_mcmc), axis=1)
+        datsim_tosave['model_min'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
+            datsim_tosave['i'],min_theta_mcmc,theta_mcmc), axis=1)
+        datsim_tosave['model_max'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
+            datsim_tosave['i'],max_theta_mcmc,theta_mcmc), axis=1)
+        # datsim_tosave.round(2)
+        datsim_tosave.to_csv('datasim_ratio_%s_%s.csv' % (model,version),index=False,sep=' ',float_format='%.2f')
 
     '''Plots
         (optional)
@@ -165,8 +192,6 @@ if __name__ == "__main__":
     '''
     if args.plots or args.onlybias:
         print('>> Plotting data, simulation distributions %s' % path_plots)
-        if not os.path.exists(path_plots):
-            os.makedirs(path_plots)
         # c,x1,z distributions
         norm = mplot.distribution_plots(norm_bin, data, sim, path_plots)
         # c,x1 as a function of z

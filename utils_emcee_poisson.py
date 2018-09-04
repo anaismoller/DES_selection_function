@@ -124,7 +124,7 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots, verbose,valida
             # print('.  plotting line time')
             plt.clf()
             plt.plot(sampler.chain[:, :, var].T, color="k", alpha=0.4)
-            plt.savefig('plots/line-time_' + str(var) + '.png')
+            plt.savefig(path_plots + '/line-time_' + str(var) + '.png')
 
     samples = sampler.chain[:, nburn:, :].reshape((-1, ndim))
     plot_MCMC_results(xdata, ydata, samples)
@@ -186,7 +186,7 @@ def fit_MCMC(d_param, xdata, ydata, ndata,nsim, plots,path_plots, verbose,valida
         plt.legend()
         plt.savefig(path_plots + '/fitted_model_mcmc_i.png')
 
-    return theta_mcmc
+    return theta_mcmc, min_theta_mcmc, max_theta_mcmc
 
 
 def sigmoid_func(x, a, alph, bet):
@@ -282,10 +282,13 @@ def emcee_fitting(datsim, plots, path_plots, nameout, verbose,validation):
     if verbose:
         print('>> Emcee: fitting a sigmoid to data/simulation in mag i bins')
         print('          using Poisson distribution')
-    A_mcmc, alpha_mcmc, beta_mcmc = fit_MCMC(
+    theta_mcmc, min_theta_mcmc,max_theta_mcmc = fit_MCMC(
         d_param, xdata, ydata, ndata, nsim, plots, path_plots,verbose,validation,nameout)
+    A_mcmc, alpha_mcmc, beta_mcmc = theta_mcmc
     if verbose:
         print('   Finished emcee')
         # write the selection function
         print('>> Write selection function %s' % (nameout))
     write_seleff(A_mcmc, alpha_mcmc, beta_mcmc, nameout)
+
+    return theta_mcmc, min_theta_mcmc, max_theta_mcmc
