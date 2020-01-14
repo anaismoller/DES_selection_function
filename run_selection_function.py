@@ -1,26 +1,23 @@
+import os
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
-# import utils_emcee_gaussian as mc
+import utils_logging as lu
+# import utils_plots as mplot
+import matplotlib.pyplot as plt
 import utils_emcee_poisson as mc
-import utils_plots as mplot
-import os
 
 '''
-2018/08/07 A. Moller
+2020 A. Moller
 
-Obtain spectroscopic selection efficiency
-using ratio data/sim (spec confirmed SNe Ia/simulated Ias)
-2018/08/13 
-normalizes the simulation to have perfect efficiency at the bright tail
-normalization comes from sigmoid fit, beware this makes the +1sigma above 1 eff!
+Obtain sample selection efficiency
+using ratio data/sim (selected SNe Ia/simulated Ias)
 
 '''
 
 
-def calculate_sigmoid(row,min_theta_mcmc, theta_mcmc):
-    return mc.sigmoid_func(row, min_theta_mcmc[0],min_theta_mcmc[1],
+def calculate_sigmoid(row, min_theta_mcmc, theta_mcmc):
+    return mc.sigmoid_func(row, min_theta_mcmc[0], min_theta_mcmc[1],
                            min_theta_mcmc[2]) / theta_mcmc[0]
 
 
@@ -33,166 +30,122 @@ def copy_uncompress(fname):
     return thisfname
 
 
-def load_fitres(filepath,validation=False,nsn=-1):
+def load_fitres(fpath):
     '''Load light curve fit file and apply cuts    
     Arguments:
-        filepath (str) -- Lightcurve fit file with path   
+        fpath (str) -- Lightcurve fit file with path   
     Returns:
         pandas dataframe 
     '''
-    skiprows = 11
-    filetoload = pd.read_csv(filepath, index_col=False,comment='#', delimiter=' ',
-                             skiprows=skiprows, skipinitialspace=True)
+    if '.gz' in fpath:
+        fpath = copy_uncompress(fpath)
+
+    filetoload = pd.read_csv(fpath, index_col=False,
+                             comment='#', delimiter=' ', skipinitialspace=True)
+    # apply cosmology cuts
     tmp = filetoload[(filetoload['c'] > -0.3) & (filetoload['c'] < 0.3) & (filetoload['x1'] > -3) & (filetoload['x1']
                                                                                                      < 3) & (filetoload['zHD'] > 0.05) & (filetoload['zHD'] < 0.9) & (filetoload['FITPROB'] > 1E-05)]
     df = tmp.copy()
-    if nsn != -1:
-        dfout = df[:int(nsn)]
-    else:
-        dfout = df
+    dfout = df
+
     return dfout
 
 
-def data_sim_division(filt, min_mag, norm_bin, nbins,plots, path_plots):
-    '''
-    dividing data and sim to obtain the selection function
-    '''
-    var = 'm0obs_' + filt
-    bin_centers, content_division, errors_division, n_data, n_sim = mplot.mag_histos(
-        filt, data, sim, norm_bin, min_mag, nbins, plots, path_plots)
+def data_sim_ratio(data,sim,var='m0obs_i',path_plots='./'):
+    """
+    Ratio between data and simulation in a given variable
+    """
+    # Init
+    # TODO: no hardcut for lower limit
+    data_var = data[data[var]>20][var] 
+    sim_var = sim[sim[var]>20][var] 
 
-    result = {}
-    result['x'] = bin_centers
-    result['div'] = content_division
-    result['err'] = errors_division
-    result['n_data'] = n_data
-    result['n_sim'] = n_sim
-    df = pd.DataFrame(result, columns=['x', 'div', 'err','n_data','n_sim'])
+    minv = min([x.quantile(0.01) for x in [data_var, sim_var]])
+    maxv = max([x.quantile(0.99) for x in [data_var, sim_var]])
+    bins = np.linspace(minv, maxv, 15)
+    bin_centers = 0.5 * (bins[1:] + bins[:-1])
 
-    '''
-    Use if you want a table with data/sim i_mag
-    '''
-    df2 = pd.DataFrame()
-    df2['i'] = df['x']
-    df2['datasim_ratio'] = df['div']
-    # df2['error'] = df['err']
-    df2['n_sim'] = df['n_sim']
-    df2['n_data'] = df['n_data']
+    hist_data, _ = np.histogram(data_var, bins=bins)
+    hist_sim, _ = np.histogram(sim_var, bins=bins)
+    err_data = np.sqrt(hist_data)
+    err_sim = np.sqrt(hist_sim)
 
-    return df, df2
+    ratio = hist_data / hist_sim
+    ratio = ratio / ratio.max()
+    err_ratio = np.sqrt((err_data / hist_data) ** 2 + (err_sim / hist_sim) ** 2) * ratio
+    err_ratio = np.nan_to_num(err_ratio)
+
+    # save as dataframe
+    df = pd.DataFrame()
+    df['x'] = bin_centers
+    df['ratio'] = ratio
+    df['err_ratio'] = err_ratio
+    df['ndata'] = hist_data
+    df['nsim'] = hist_sim
+    df.meta = {}
+    df.meta['ratio_variable'] = var
+
+    return df
 
 
 if __name__ == "__main__":
 
-    scratch_path = os.environ.get("SCRATCH_FITDIR")
+    # scratch_path = os.environ.get("SCRATCH_FITDIR")
 
     '''Parse arguments
     '''
     parser = argparse.ArgumentParser(
         description='Selection function data vs simulations')
+
     parser.add_argument('--data', type=str,
-                        default='%s/DES3YR_v1_freeze/DES3YR_DES_COMBINED_FITS/DES3YR_DES_COMBINED_FITS/FITOPT000.FITRES.gz' % (
-                            scratch_path),
+                        default='tests/data/FITOPT000.FITRES',
                         help="Data file (ligthcurve fits: FITRES file)")
+
     parser.add_argument('--sim', type=str,
-                        default='%s/DES3YR_v7/DES3YR_DES_SPECEFF/DES3YR_DES_SPECEFF_AMG10/FITOPT000.FITRES.gz' % (
-                            scratch_path),
+                        default='tests/sim/FITOPT000.FITRES',
                         help="Simulation file (ligthcurve fits: FITRES file)")
-    parser.add_argument('--nameout', type=str, default='./SEARCHEFF_SPEC_DES_Moller_G10_v7.DAT',
-                        help="Out name for spectroscopic selection function (useful for C10,G11 distinction)")
-    parser.add_argument('--plots', action="store_true", default=False,
-                        help="Data / Simulation plots")
-    parser.add_argument(
-        '--path_plots', default=None, help='Path to save plots')
-    parser.add_argument('--onlybias', action="store_true", default=False,
-                        help="Computing bias, no selection function computation")
-    parser.add_argument('--verbose',action='store_true', default=False)
-    parser.add_argument('--validation',action='store_true', default=False,help='save fit parameters in text file')
-    parser.add_argument('--nsn',default=-1,help='limit number of SNe used in fit')
 
+    parser.add_argument('--outpath', default='./dump/', help='Path to save output')
+
+    # Init
     args = parser.parse_args()
-
     fdata = args.data
     fsim = args.sim
-    nameout = args.nameout
-    nsn = args.nsn
+    path_plots = f"{args.outpath}/plots"
+    os.makedirs(path_plots, exist_ok=True)
 
-    model = args.sim.split('/')[-2][-3:]
-    version = args.sim.split('/')[-4][-2:]
+    # Load fits files
+    print(f"data: {fdata}")
+    print(f"sim: {fsim}")
+    data = load_fitres(fdata)
+    sim = load_fitres(fsim)
+    lu.print_green('Finished loading data and sim fits')
 
-    if args.path_plots:
-        path_plots = args.path_plots
-    else:
-        path_plots = './plots_%s_%s/' % (model,version)
-    if args.plots:
-        if not os.path.exists(path_plots):
-            os.makedirs(path_plots)
+    # Data vs Sim ratio
+    df = data_sim_ratio(data,sim, path_plots=path_plots)
 
-    # no normalization
-    # normalization is now taken into account in the sigmoid fit
-    norm_bin = -1
+    # # Emcee fit of dat/sim
+    theta_mcmc, min_theta_mcmc, max_theta_mcmc = mc.emcee_fitting(
+        df,path_plots)
 
-    '''Read data/sim files
-        if required copy,uncompress,read,clean
-    '''
-    print('___________________')
-    print('   data: %s' % fdata)
-    print('   sim: %s' % fsim)
-    if '.gz' in fdata:
-        if args.verbose:
-            print('       copy & unzip %s' % (fdata))
-        newfdata = copy_uncompress(fdata)
-        fdata = newfdata
-        data = load_fitres(fdata,nsn=nsn)
-        os.remove(newfdata)
-    else:
-        data = load_fitres(fdata,nsn=nsn)
+    # # add model errors to csv
+    # datsim_tosave['datasim_ratio_normalized'] = datsim_tosave['datasim_ratio'] / theta_mcmc[0]
+    # datsim_tosave['model'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
+    #     datsim_tosave['i'], theta_mcmc, theta_mcmc), axis=1)
+    # datsim_tosave['model_min'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
+    #     datsim_tosave['i'], min_theta_mcmc, theta_mcmc), axis=1)
+    # datsim_tosave['model_max'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
+    #     datsim_tosave['i'], max_theta_mcmc, theta_mcmc), axis=1)
+    # # datsim_tosave.round(2)
+    # datsim_tosave.to_csv('datasim_ratio_%s_%s.csv' % (
+    #     model, version), index=False, sep=' ', float_format='%.2f')
 
-    if '.gz' in fsim:
-        if args.verbose:
-            print('       copy & unzip %s' % (fsim))
-        newfsim = copy_uncompress(fsim)
-        fsim = newfsim
-        sim = load_fitres(fsim,validation=args.validation)
-        os.remove(newfsim)
-    else:
-        sim = load_fitres(fsim,validation=args.validation)
-
-    if not args.onlybias:
-        '''Selection Function
-        compute selection function by dividing data/sim by magnitude bin
-        '''
-        print('   Computing selection function')
-        print('   Method: Data vs. Simulations (A. Moller)')
-        # Init
-        nbins = 20
-        filt = 'i'
-        min_mag = 20  # where are we complete? here you need a human choice, or do we?
-        # Data vs Sim
-        datsim, datsim_tosave = data_sim_division(
-            filt, min_mag, norm_bin, nbins, args.plots, path_plots)
-        # Emcee fit of dat/sim
-        theta_mcmc, min_theta_mcmc, max_theta_mcmc = mc.emcee_fitting(
-            datsim, args.plots, path_plots, nameout,args.verbose,args.validation)
-
-        # add model errors to csv
-        datsim_tosave['datasim_ratio_normalized'] = datsim_tosave['datasim_ratio'] / theta_mcmc[0]
-        datsim_tosave['model'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
-            datsim_tosave['i'],theta_mcmc,theta_mcmc), axis=1)
-        datsim_tosave['model_min'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
-            datsim_tosave['i'],min_theta_mcmc,theta_mcmc), axis=1)
-        datsim_tosave['model_max'] = datsim_tosave.apply(lambda datsim_tosave: calculate_sigmoid(
-            datsim_tosave['i'],max_theta_mcmc,theta_mcmc), axis=1)
-        # datsim_tosave.round(2)
-        datsim_tosave.to_csv('datasim_ratio_%s_%s.csv' % (model,version),index=False,sep=' ',float_format='%.2f')
-
-    '''Plots
-        (optional)
-        variable distribution plots for data control
-    '''
-    if args.plots or args.onlybias:
-        print('>> Plotting data, simulation distributions %s' % path_plots)
-        # c,x1,z distributions
-        norm = mplot.distribution_plots(norm_bin, data, sim, path_plots)
-        # c,x1 as a function of z
-        mplot.plots_vs_z(data, sim, path_plots,args.onlybias)
+    # '''Plots
+    #     (optional)
+    #     variable distribution plots for data control
+    # '''
+    # print('>> Plotting data, simulation distributions %s' % path_plots)
+    # # c,x1,z distributions
+    # norm = mplot.distribution_plots(norm_bin, data, sim, path_plots)
+    # # c,x1 as a function of z
+    # mplot.plots_vs_z(data, sim, path_plots, args.onlybias)
