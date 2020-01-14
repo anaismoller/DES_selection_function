@@ -118,7 +118,6 @@ def fit_MCMC(df, fit_param, path_plots):
     # Clear and run the production chain.
     # pos_ini = [np.mean(fit_param[key]) for key in fit_param.keys() if 'mean' not in key]
     pos_ini = [fit_param[key] for key in fit_param.keys() if 'mean' in key]
-    print('>>',pos_ini)
     pos = [pos_ini + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)]
     sampler.run_mcmc(pos, nsteps, rstate0=np.random.get_state())
     for var in range(ndim):

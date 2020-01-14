@@ -51,14 +51,14 @@ def load_fitres(fpath):
     return dfout
 
 
-def data_sim_ratio(data,sim,var='m0obs_i',path_plots='./'):
+def data_sim_ratio(data,sim,var='m0obs_i',min_var= 20, path_plots='./'):
     """
     Ratio between data and simulation in a given variable
     """
     # Init
     # TODO: no hardcut for lower limit
-    data_var = data[data[var]>20][var] 
-    sim_var = sim[sim[var]>20][var] 
+    data_var = data[data[var]>min_var][var] 
+    sim_var = sim[sim[var]>min_var][var] 
 
     minv = min([x.quantile(0.01) for x in [data_var, sim_var]])
     maxv = max([x.quantile(0.99) for x in [data_var, sim_var]])
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     lu.print_green('Finished loading data and sim fits')
 
     # Data vs Sim ratio
-    df = data_sim_ratio(data,sim, path_plots=path_plots)
+    df = data_sim_ratio(data,sim,var='m0obs_i',min_var=20, path_plots=path_plots)
 
     # # Emcee fit of dat/sim
     theta_mcmc, min_theta_mcmc, max_theta_mcmc = mc.emcee_fitting(
