@@ -77,8 +77,7 @@ def data_sim_ratio(data, sim, var='HOST_MAG_i', min_var=15, path_plots='./'):
     df['err_ratio'] = err_ratio
     df['ndata'] = hist_data
     df['nsim'] = hist_sim
-    df.meta = {}
-    df.meta['ratio_variable'] = var
+    df.ratio_variable = var
 
     return df, minv, maxv
 
@@ -147,6 +146,9 @@ if __name__ == "__main__":
     parser.add_argument('--outpath', default='./dump/',
                         help='Path to save output')
 
+    parser.add_argument('--variable', default='HOST_MAG_i',
+                        help='Variable used to compute selection function')
+
     parser.add_argument('--extra_plots', action="store_true",
                         help='If c,x1 distributions are plotted')
 
@@ -154,6 +156,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     fdata = args.data
     fsim = args.sim
+    variable = args.variable
     path_selection_function = args.outpath
     path_plots = f"{args.outpath}/plots"
     os.makedirs(path_plots, exist_ok=True)
@@ -166,19 +169,20 @@ if __name__ == "__main__":
     lu.print_green('Finished loading data and sim fits')
 
     # Selection config
-    var = 'HOST_MAG_i'
-    min_var = data[var].min()
-    max_var = data[var].max()
+    min_var = data[variable].min()
+    max_var = data[variable].max()
 
     # Data vs Sim ratio
-    df, minv, maxv = data_sim_ratio(data, sim, var=var,
+    df, minv, maxv = data_sim_ratio(data, sim, var=variable,
                                     min_var=min_var, path_plots=path_plots)
 
     # Emcee fit of dat/sim
-    A_mcmc, alpha_mcmc, beta_mcmc = mc.emcee_fitting(
+    theta_mcmc, min_theta_mcmc, max_theta_mcmc = mc.emcee_fitting(
         df, path_plots, min_var=min_var)
 
     # Write selection function in SNANA format
+    # not using contours
+    A_mcmc, alpha_mcmc, beta_mcmc = theta_mcmc
     write_seleff(A_mcmc, alpha_mcmc, beta_mcmc, nameout=f"{path_selection_function}/SELEFF.DAT", min_var=min_var, max_var=max_var)
 
     # Optional plots

@@ -14,7 +14,6 @@ Module for emcee fitting of a sigmoid for efficiency
 assumes that data distribution is poisson
 '''
 
-
 def compute_sigma_level(trace1, trace2, nbins=20):
     """From a set of traces, bin by number of standard deviations"""
     L, xbins, ybins = np.histogram2d(trace1, trace2, nbins)
@@ -109,7 +108,7 @@ def fit_MCMC(df, fit_param, path_plots):
         nwalkers, ndim, log_posterior, args=[df['x'].values, df['ratio'].values, df['ndata'].values, df['nsim'].values])
 
     # Clear and run the production chain.
-    pos_ini = [fit_param[key] for key in fit_param.keys() if 'mean' in key]
+    pos_ini = [np.mean(fit_param[key]) for key in fit_param.keys()]
     pos = [pos_ini + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)]
     sampler.run_mcmc(pos, nsteps, rstate0=np.random.get_state())
     for var in range(ndim):
@@ -135,7 +134,7 @@ def fit_MCMC(df, fit_param, path_plots):
     # fig = cha.plotter.plot(filename=f"{path_plots}/triangle.png")
 
     plt.clf()
-    variable = df.meta['ratio_variable']
+    variable = df.ratio_variable
     xx = np.linspace(df['x'].min(), df['x'].max(), 200)
     plt.plot(xx, sigmoid_func(xx, min_theta_mcmc[0], min_theta_mcmc[1],
                               min_theta_mcmc[2]) / theta_mcmc[0], color='yellow',)
@@ -165,13 +164,12 @@ def emcee_fitting(df, path_plots,min_var=15):
     high_bounds = [4, 4, 70]
     popt, pcov = curve_fit(sigmoid_func,
                            df['x'].values, df['ratio'].values)
-    print('   Functional initial guess')
-    print('   ', popt)
+    lu.print_green('Functional initial guess', popt)
     low_bounds = [p - 3 * p / 10. for p in popt]
     high_bounds = [p + 3 * p / 10. for p in popt]
 
     # Plot initial guess
-    variable = df.meta['ratio_variable']
+    variable = df.ratio_variable
     plt.clf()
     fig = plt.figure()
     xx = np.linspace(df['x'].min(), df['x'].max(), 200)
@@ -188,17 +186,12 @@ def emcee_fitting(df, path_plots,min_var=15):
     fit_param['A'] = (low_bounds[0], high_bounds[0])
     fit_param['alpha'] = (low_bounds[1], high_bounds[1])
     fit_param['beta'] = (low_bounds[2], high_bounds[2])
-    fit_param['A_mean'] = popt[0]
-    fit_param['alpha_mean'] = popt[1]
-    fit_param['beta_mean'] = popt[2]
-    lu.print_green('function',fit_param)
 
     lu.print_blue(
         'Emcee fitting sigmoid to data/simulation ratio (Poisson errors)')
     theta_mcmc, min_theta_mcmc, max_theta_mcmc = fit_MCMC(
         df, fit_param, path_plots)
-    A_mcmc, alpha_mcmc, beta_mcmc = theta_mcmc
     lu.print_green('emcee:',theta_mcmc)
     lu.print_blue('Finished emcee')
 
-    return A_mcmc, alpha_mcmc, beta_mcmc
+    return theta_mcmc, min_theta_mcmc, max_theta_mcmc 
